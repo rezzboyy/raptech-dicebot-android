@@ -414,6 +414,10 @@ class DicebotForegroundService : Service() {
         }
     }
 
+    fun clearLogs() {
+        _uiState.update { it.copy(liveLogs = emptyList()) }
+    }
+
     fun updateScript(newScript: String) {
         val syntaxCheck = LuaEngine.validateSyntax(newScript)
         _uiState.update { it.copy(luaScript = newScript, syntaxValidation = syntaxCheck) }

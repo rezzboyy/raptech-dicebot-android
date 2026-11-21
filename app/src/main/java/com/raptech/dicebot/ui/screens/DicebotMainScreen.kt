@@ -73,6 +73,8 @@ fun DicebotMainScreen(
     onResetStats: () -> Unit = {},
     onResetSeed: () -> Unit = {},
     onCheckUpdate: () -> Unit = {},
+    onQuitApp: () -> Unit = {},
+    onClearLogs: () -> Unit = {},
     showBatteryOptimizationPrompt: Boolean = false,
     onDismissBatteryPrompt: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -84,6 +86,7 @@ fun DicebotMainScreen(
     var showConfigDialog by remember { mutableStateOf(false) }
     var showRiskDialog by remember { mutableStateOf(false) }
     var showCoinDialog by remember { mutableStateOf(false) }
+    var isMetricsCollapsed by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -100,8 +103,7 @@ fun DicebotMainScreen(
                     modifier = Modifier
                         .weight(1.1f)
                         .fillMaxHeight()
-                        .padding(start = 8.dp, top = 6.dp, bottom = 6.dp, end = 4.dp)
-                        .verticalScroll(rememberScrollState()),
+                        .padding(start = 8.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     HeaderBar(
@@ -110,14 +112,22 @@ fun DicebotMainScreen(
                         onOpenConfig = { showConfigDialog = true },
                         onOpenRisk = { showRiskDialog = true },
                         onOpenCoinSelector = { showCoinDialog = true },
-                        onCheckUpdate = onCheckUpdate
+                        onCheckUpdate = onCheckUpdate,
+                        onQuitApp = onQuitApp
                     )
                     MetricsDashboard(
                         state = state,
-                        onOpenCoinSelector = { showCoinDialog = true }
+                        onOpenCoinSelector = { showCoinDialog = true },
+                        isCollapsed = isMetricsCollapsed,
+                        onToggleCollapse = { isMetricsCollapsed = !isMetricsCollapsed }
                     )
                     LiveChart(points = state.chartPoints)
-                    HistoryTable(history = state.history)
+                    HistoryTable(
+                        history = state.history,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
                 }
 
                 // Right Pane: LUA Editor / Logs Tabs + Bottom Sticky Controls
@@ -144,7 +154,7 @@ fun DicebotMainScreen(
                         ) { selectedTab = 0 }
 
                         TabButton(
-                            title = "Live Logs (${state.liveLogs.size})",
+                            title = "Console (${state.liveLogs.size})",
                             isSelected = selectedTab == 1,
                             modifier = Modifier.weight(1f)
                         ) { selectedTab = 1 }
@@ -163,6 +173,7 @@ fun DicebotMainScreen(
                             )
                             1 -> LiveLogConsole(
                                 logs = state.liveLogs,
+                                onClearLogs = onClearLogs,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -193,7 +204,8 @@ fun DicebotMainScreen(
                     onOpenConfig = { showConfigDialog = true },
                     onOpenRisk = { showRiskDialog = true },
                     onOpenCoinSelector = { showCoinDialog = true },
-                    onCheckUpdate = onCheckUpdate
+                    onCheckUpdate = onCheckUpdate,
+                    onQuitApp = onQuitApp
                 )
 
                 Column(
@@ -207,7 +219,9 @@ fun DicebotMainScreen(
                     // 12-Metrics Financial Dashboard
                     MetricsDashboard(
                         state = state,
-                        onOpenCoinSelector = { showCoinDialog = true }
+                        onOpenCoinSelector = { showCoinDialog = true },
+                        isCollapsed = isMetricsCollapsed,
+                        onToggleCollapse = { isMetricsCollapsed = !isMetricsCollapsed }
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
@@ -235,7 +249,7 @@ fun DicebotMainScreen(
                         ) { selectedTab = 1 }
 
                         TabButton(
-                            title = "Live Logs (${state.liveLogs.size})",
+                            title = "Console (${state.liveLogs.size})",
                             isSelected = selectedTab == 2,
                             modifier = Modifier.weight(1f)
                         ) { selectedTab = 2 }
@@ -247,13 +261,16 @@ fun DicebotMainScreen(
                     when (selectedTab) {
                         0 -> {
                             Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState()),
+                                modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 LiveChart(points = state.chartPoints)
-                                HistoryTable(history = state.history)
+                                HistoryTable(
+                                    history = state.history,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                )
                             }
                         }
                         1 -> {
@@ -266,15 +283,11 @@ fun DicebotMainScreen(
                             )
                         }
                         2 -> {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                LiveLogConsole(logs = state.liveLogs)
-                                HistoryTable(history = state.history)
-                            }
+                            LiveLogConsole(
+                                logs = state.liveLogs,
+                                onClearLogs = onClearLogs,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                     }
                 }

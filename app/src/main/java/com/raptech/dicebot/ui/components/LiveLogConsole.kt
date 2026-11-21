@@ -2,6 +2,7 @@ package com.raptech.dicebot.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import com.raptech.dicebot.ui.theme.RaptechColors
 @Composable
 fun LiveLogConsole(
     logs: List<LuaLogEntry>,
+    onClearLogs: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -56,17 +58,31 @@ fun LiveLogConsole(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Live LUA Console Log (${logs.size})",
+                text = "Console (${logs.size})",
                 color = RaptechColors.OrangePrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.SansSerif
             )
-            Text(
-                text = "Captured via print(...)",
-                color = RaptechColors.TextMuted,
-                fontSize = 10.sp
-            )
+
+            // Clear Log Button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(RaptechColors.SurfaceLight)
+                    .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(4.dp))
+                    .clickable { onClearLogs() }
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Clear",
+                    color = RaptechColors.TextSecondary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.SansSerif
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -75,7 +91,7 @@ fun LiveLogConsole(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp)
+                .weight(1f)
                 .clip(RoundedCornerShape(6.dp))
                 .background(RaptechColors.SurfaceLight)
                 .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(6.dp))
@@ -87,7 +103,7 @@ fun LiveLogConsole(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Belum ada log LUA.\nPanggil print(...) di dalam skrip untuk melihat output di sini.",
+                        text = "Konsol kosong.\nOutput print(...) akan tampil di sini.",
                         color = RaptechColors.TextMuted,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,

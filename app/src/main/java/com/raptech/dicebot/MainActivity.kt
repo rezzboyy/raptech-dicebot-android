@@ -196,6 +196,18 @@ class MainActivity : ComponentActivity() {
                             onCheckUpdate = {
                                 performUpdateCheck(isManual = true)
                             },
+                            onQuitApp = {
+                                botService?.stopBot()
+                                startBotService(DicebotForegroundService.ACTION_STOP)
+                                if (isBound) {
+                                    unbindService(serviceConnection)
+                                    isBound = false
+                                }
+                                finishAffinity()
+                            },
+                            onClearLogs = {
+                                botService?.clearLogs()
+                            },
                             onRequestBatteryWhitelist = {
                                 BatteryOptimizationHelper.requestIgnoreBatteryOptimization(this@MainActivity)
                             },

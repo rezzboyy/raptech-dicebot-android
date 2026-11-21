@@ -128,17 +128,23 @@ fun HistoryTable(
         Spacer(modifier = Modifier.height(4.dp))
 
         if (history.isEmpty()) {
-            Text(
-                text = "Belum ada riwayat roll. Tekan START untuk memulai sesi.",
-                color = RaptechColors.TextMuted,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 14.dp, horizontal = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Belum ada riwayat roll. Tekan START untuk memulai sesi.",
+                    color = RaptechColors.TextMuted,
+                    fontSize = 11.sp
+                )
+            }
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(230.dp),
+                    .weight(1f, fill = false),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 reverseLayout = true
             ) {

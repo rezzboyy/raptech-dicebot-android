@@ -115,7 +115,7 @@ fun LiveChart(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(160.dp)
+                .height(125.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(RaptechColors.SurfaceLight)
                 .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(6.dp))

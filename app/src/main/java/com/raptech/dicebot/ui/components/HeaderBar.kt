@@ -8,16 +8,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +45,7 @@ import com.raptech.dicebot.model.CasinoPlatform
 import com.raptech.dicebot.model.DicebotUiState
 import com.raptech.dicebot.ui.theme.RaptechColors
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HeaderBar(
     state: DicebotUiState,
@@ -47,9 +54,11 @@ fun HeaderBar(
     onOpenRisk: () -> Unit,
     onOpenCoinSelector: () -> Unit = {},
     onCheckUpdate: () -> Unit = {},
+    onQuitApp: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var platformMenuExpanded by remember { mutableStateOf(false) }
+    var showQuitConfirmDialog by remember { mutableStateOf(false) }
     val hasActiveRiskLimits = state.stopLossLimit != null || state.takeProfitLimit != null || state.maxBetLimit != null
 
     Column(
@@ -328,6 +337,116 @@ fun HeaderBar(
                         fontSize = 10.sp,
                         fontWeight = if (hasActiveRiskLimits) FontWeight.Bold else FontWeight.Medium
                     )
+                }
+            }
+
+            // Quit Bot / Power Button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(RaptechColors.SurfaceLight)
+                    .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(6.dp))
+                    .clickable { showQuitConfirmDialog = true }
+                    .padding(horizontal = 7.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PowerSettingsNew,
+                    contentDescription = "Keluar Aplikasi",
+                    tint = RaptechColors.LossDanger,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+        }
+
+        // Quit Bot Confirmation Dialog
+        if (showQuitConfirmDialog) {
+            BasicAlertDialog(onDismissRequest = { showQuitConfirmDialog = false }) {
+                Box(
+                    modifier = Modifier
+                        .width(300.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(RaptechColors.SurfaceWhite)
+                        .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(12.dp))
+                        .padding(20.dp)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(RaptechColors.LossBackground)
+                                .border(1.dp, RaptechColors.LossBorder, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PowerSettingsNew,
+                                contentDescription = null,
+                                tint = RaptechColors.LossDanger,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Text(
+                            text = "Keluar dari Aplikasi?",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = RaptechColors.TextPrimary
+                        )
+
+                        Text(
+                            text = "Seluruh proses taruhan akan dihentikan dan layanan latar belakang dimatikan total.",
+                            fontSize = 12.sp,
+                            color = RaptechColors.TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(38.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(RaptechColors.SurfaceHover)
+                                    .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(6.dp))
+                                    .clickable { showQuitConfirmDialog = false },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Batal",
+                                    color = RaptechColors.TextSecondary,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .height(38.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(RaptechColors.LossDanger)
+                                    .clickable {
+                                        showQuitConfirmDialog = false
+                                        onQuitApp()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Ya, Keluar",
+                                    color = androidx.compose.ui.graphics.Color.White,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
