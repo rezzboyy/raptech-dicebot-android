@@ -39,6 +39,7 @@ object DicebotUpdateManager {
      */
     suspend fun checkForUpdate(currentVersionName: String): UpdateCheckResult = withContext(Dispatchers.IO) {
         try {
+            Log.i(TAG, "Checking GitHub Releases for updates. Current version: $currentVersionName")
             val url = URL(API_URL)
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
@@ -49,11 +50,13 @@ object DicebotUpdateManager {
             }
 
             val responseCode = conn.responseCode
+            Log.i(TAG, "GitHub API response code: $responseCode")
             if (responseCode == 404) {
                 // No releases published yet on GitHub
                 return@withContext UpdateCheckResult.UpToDate
             }
             if (responseCode != 200) {
+                Log.w(TAG, "GitHub API returned non-200: $responseCode")
                 return@withContext UpdateCheckResult.Error("HTTP $responseCode saat memeriksa pembaruan")
             }
 
@@ -63,6 +66,7 @@ object DicebotUpdateManager {
             val tagName = json.optString("tag_name", "").trim()
             val releaseTitle = json.optString("name", "Raptech Dicebot Pembaruan").ifEmpty { "Raptech Dicebot $tagName" }
             val changelog = json.optString("body", "Peningkatan performa, stabilitas engine strategi, dan optimasi antarmuka.")
+            Log.i(TAG, "Remote release found: tag=$tagName, title=$releaseTitle")
 
             // Look for .apk asset
             val assetsArray = json.optJSONArray("assets")
@@ -82,11 +86,15 @@ object DicebotUpdateManager {
             }
 
             if (apkUrl.isNullOrEmpty()) {
+                Log.i(TAG, "No APK asset found in release $tagName")
                 return@withContext UpdateCheckResult.UpToDate
             }
 
+            val isNewer = isRemoteVersionNewer(remoteTag = tagName, currentVersion = currentVersionName)
+            Log.i(TAG, "Comparison: remote=$tagName vs current=$currentVersionName -> isNewer=$isNewer")
+
             // Version comparison (e.g. "v1.0.1" vs "1.0.0")
-            if (isRemoteVersionNewer(remoteTag = tagName, currentVersion = currentVersionName)) {
+            if (isNewer) {
                 UpdateCheckResult.UpdateAvailable(
                     UpdateInfo(
                         tagName = tagName,

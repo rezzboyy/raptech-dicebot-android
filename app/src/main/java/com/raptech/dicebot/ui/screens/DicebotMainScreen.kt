@@ -72,6 +72,7 @@ fun DicebotMainScreen(
     onResetAll: () -> Unit = {},
     onResetStats: () -> Unit = {},
     onResetSeed: () -> Unit = {},
+    onCheckUpdate: () -> Unit = {},
     showBatteryOptimizationPrompt: Boolean = false,
     onDismissBatteryPrompt: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -108,7 +109,8 @@ fun DicebotMainScreen(
                         onPlatformSelected = onPlatformSelected,
                         onOpenConfig = { showConfigDialog = true },
                         onOpenRisk = { showRiskDialog = true },
-                        onOpenCoinSelector = { showCoinDialog = true }
+                        onOpenCoinSelector = { showCoinDialog = true },
+                        onCheckUpdate = onCheckUpdate
                     )
                     MetricsDashboard(
                         state = state,
@@ -190,7 +192,8 @@ fun DicebotMainScreen(
                     onPlatformSelected = onPlatformSelected,
                     onOpenConfig = { showConfigDialog = true },
                     onOpenRisk = { showRiskDialog = true },
-                    onOpenCoinSelector = { showCoinDialog = true }
+                    onOpenCoinSelector = { showCoinDialog = true },
+                    onCheckUpdate = onCheckUpdate
                 )
 
                 Column(

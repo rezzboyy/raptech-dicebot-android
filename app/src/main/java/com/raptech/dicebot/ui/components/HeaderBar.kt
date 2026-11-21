@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,6 +45,7 @@ fun HeaderBar(
     onOpenConfig: () -> Unit,
     onOpenRisk: () -> Unit,
     onOpenCoinSelector: () -> Unit = {},
+    onCheckUpdate: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var platformMenuExpanded by remember { mutableStateOf(false) }
@@ -65,7 +67,11 @@ fun HeaderBar(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onCheckUpdate() }
+                    .padding(vertical = 2.dp, horizontal = 4.dp)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_dice),
@@ -80,6 +86,12 @@ fun HeaderBar(
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.SansSerif,
                     letterSpacing = 0.5.sp
+                )
+                Icon(
+                    imageVector = Icons.Default.CloudDownload,
+                    contentDescription = "Cek Pembaruan",
+                    tint = RaptechColors.TextMuted,
+                    modifier = Modifier.size(13.dp)
                 )
             }
 

@@ -170,6 +170,39 @@ Fokus aktif saat ini adalah transformasi menyeluruh antarmuka menuju tema **Soli
 
 ---
 
+### Track 6: Audit 11 Situs Pick.io, User-Agent Sync, & Sistem Update Otomatis OTA via `release.ps1` (Status: SELESAI & TERTUTUP ✓)
+- [x] **6.1 Audit Menyeluruh 11 Situs Kasino Pick.io + Simulator**:
+  - Pengujian DNS dan HTTP Status 200 pada seluruh domain resmi: `tronpick.io`, `dogepick.io`, `litepick.io`, `bnbpick.io`, `solpick.io`, `polpick.io`, `btcpick.io`, `ethpick.io`, `usdtpick.io`, `bchpick.io`, dan `tonpick.io`.
+  - Verifikasi struktur endpoint: `/dice.php` (halaman balance & CSRF), `/process.php` (endpoint aksi `bet_game_dice` & `change_client_seed`).
+  - Simulator offline siap pakai dengan dukungan penuh 11 koin kripto.
+- [x] **6.2 Sinkronisasi Otomatis User-Agent (Anti-Cloudflare Block)**:
+  - Mengintegrasikan `CasinoHttpClient.syncUserAgent(context)` dengan engine `WebSettings.getDefaultUserAgent(ctx)`.
+  - Menghilangkan hardcoding User-Agent lama sehingga permintaan OkHttp 100% identik dengan WebView browser perangkat (lulus validasi cookie `cf_clearance`).
+- [x] **6.3 Arsitektur Sistem Pembaruan Otomatis In-App (OTA Update)**:
+  - Pembuatan engine `DicebotUpdateManager.kt` berbasis GitHub Releases API (`rezzboyy/raptech-dicebot-android`).
+  - Pembanding semantik versi (`isRemoteVersionNewer`) tanpa bug perbandingan string.
+  - Penangan unduhan streaming berpenunjuk progres (0% - 100%) dan pengarah instalasi Android `PackageInstaller` via `FileProvider`.
+  - Penambahan izin `REQUEST_INSTALL_PACKAGES` dan konfigurasi `file_paths.xml`.
+- [x] **6.4 Komponen Antarmuka `DicebotUpdateDialog.kt`**:
+  - Modal pembaruan solid white dengan aksen warm orange sesuai standar desain Raptech.
+  - Menampilkan tag versi, ukuran berkas APK, catatan rilis (changelog), dan bilah progres pengunduhan interaktif.
+  - Opsi pemeriksaan manual 1-tap pada logo/header bar "RAPTECH AUTOMATION" dengan respon Toast instan.
+- [x] **6.5 Engine Rilis 1-Klik `release.ps1`**:
+  - Otomatis mendeteksi dan menaikkan `versionCode` dan `versionName` di `app/build.gradle.kts`.
+  - Kompilasi otomatis `assembleRelease` dengan optimasi R8 ProGuard (ukuran APK rilis terkompresi hingga **1.76 MB**).
+  - Sinkronisasi commit Git dan publikasi instan ke GitHub Releases via GitHub CLI (`gh release create`).
+  - Rilis perdana `v1.0.1` sukses dipublikasikan di: `https://github.com/rezzboyy/raptech-dicebot-android/releases/tag/v1.0.1`.
+- [x] **6.6 Pengujian Alur Langsung di HP OnePlus GM1910**:
+  - Instalasi via Wireless ADB (`192.168.8.2:43041`) sukses 100%.
+  - Verifikasi telemetri logcat: `DicebotUpdateManager: Checking GitHub Releases for updates` (HTTP 200, deteksi versi akurat).
+  - Uji alur taruhan simulator: 10 roll sukses tercatat, kurva PnL hijau/merah naik-turun dinamis, dan metrik dashboard terisi lengkap.
+  - Bukti tangkapan layar tersimpan di:
+    - [`doc/screenshots/live_final_installed.png`](file:///c:/Users/Administrator/Desktop/My%20Produk/App%20Android/Dicebot%20Android/doc/screenshots/live_final_installed.png)
+    - [`doc/screenshots/live_sim_rolls_proof.png`](file:///c:/Users/Administrator/Desktop/My%20Produk/App%20Android/Dicebot%20Android/doc/screenshots/live_sim_rolls_proof.png)
+    - [`doc/screenshots/live_platform_dropdown.png`](file:///c:/Users/Administrator/Desktop/My%20Produk/App%20Android/Dicebot%20Android/doc/screenshots/live_platform_dropdown.png)
+
+---
+
 ## 2. Aturan Baku Rekayasa & Desain (Engineering & Design Rules)
 
 ### Rule 1: Solid White & Comfort Warm Orange (Zero Eye Strain)

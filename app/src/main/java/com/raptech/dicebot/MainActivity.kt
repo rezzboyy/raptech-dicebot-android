@@ -81,17 +81,48 @@ class MainActivity : ComponentActivity() {
                 var isDownloadingUpdate by remember { mutableStateOf(false) }
                 var updateDownloadProgress by remember { mutableFloatStateOf(0f) }
 
+                fun performUpdateCheck(isManual: Boolean = false) {
+                    coroutineScope.launch {
+                        try {
+                            val currentVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0.0"
+                            when (val res = DicebotUpdateManager.checkForUpdate(currentVersion)) {
+                                is UpdateCheckResult.UpdateAvailable -> {
+                                    availableUpdate = res.info
+                                }
+                                is UpdateCheckResult.UpToDate -> {
+                                    if (isManual) {
+                                        android.widget.Toast.makeText(
+                                            this@MainActivity,
+                                            "Aplikasi sudah versi terbaru (v$currentVersion)",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                                is UpdateCheckResult.Error -> {
+                                    if (isManual) {
+                                        android.widget.Toast.makeText(
+                                            this@MainActivity,
+                                            "Gagal memeriksa pembaruan: ${res.message}",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            }
+                        } catch (_: Exception) {
+                            if (isManual) {
+                                android.widget.Toast.makeText(
+                                    this@MainActivity,
+                                    "Gagal terhubung ke server pembaruan",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                }
+
                 // Check GitHub Releases for updates in background on launch
                 LaunchedEffect(Unit) {
-                    try {
-                        val currentVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0.0"
-                        when (val res = DicebotUpdateManager.checkForUpdate(currentVersion)) {
-                            is UpdateCheckResult.UpdateAvailable -> {
-                                availableUpdate = res.info
-                            }
-                            else -> {}
-                        }
-                    } catch (_: Exception) {}
+                    performUpdateCheck(isManual = false)
                 }
 
                 DicebotMainScreen(
@@ -147,6 +178,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onResetSeed = {
                         botService?.resetSeed()
+                    },
+                    onCheckUpdate = {
+                        performUpdateCheck(isManual = true)
                     },
                     onRequestBatteryWhitelist = {
                         BatteryOptimizationHelper.requestIgnoreBatteryOptimization(this@MainActivity)
