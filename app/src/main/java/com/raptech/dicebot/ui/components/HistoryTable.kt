@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +47,17 @@ fun HistoryTable(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val listState = rememberLazyListState()
+    val displayHistory = remember(history) {
+        history.takeLast(100).reversed()
+    }
+
+    // Auto-scroll to top when a new bet record arrives
+    LaunchedEffect(history.size) {
+        if (displayHistory.isNotEmpty()) {
+            listState.scrollToItem(0)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -142,13 +156,13 @@ fun HistoryTable(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                reverseLayout = true
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                items(history.takeLast(100), key = { it.executionNumber }) { item ->
+                items(displayHistory, key = { it.executionNumber }) { item ->
                     val isWin = item.isWin
                     val rowBg = if (isWin) RaptechColors.WinBackground else RaptechColors.LossBackground
                     val rowBorder = if (isWin) RaptechColors.WinBorder else RaptechColors.LossBorder
