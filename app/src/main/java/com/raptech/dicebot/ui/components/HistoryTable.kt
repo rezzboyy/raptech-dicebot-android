@@ -115,16 +115,14 @@ fun HistoryTable(
                 .clip(RoundedCornerShape(5.dp))
                 .background(RaptechColors.SurfaceLight)
                 .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(5.dp))
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("#", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(0.7f))
-            Text("Amount", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.8f))
-            Text("Target", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.1f))
-            Text("Roll", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.1f))
-            Text("Net Result", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.8f))
-            Text("Nonce", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(0.9f))
+            Text("#", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(0.4f))
+            Text("Nom Bet", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.2f))
+            Text("Chance", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(0.8f))
+            Text("Win / Lose", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f))
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -149,6 +147,7 @@ fun HistoryTable(
                     val rowBg = if (isWin) RaptechColors.WinBackground else RaptechColors.LossBackground
                     val rowBorder = if (isWin) RaptechColors.WinBorder else RaptechColors.LossBorder
                     val resultColor = if (isWin) RaptechColors.WinSuccess else RaptechColors.LossDanger
+                    val statusLabel = if (isWin) "WIN" else "LOSE"
 
                     Row(
                         modifier = Modifier
@@ -156,55 +155,59 @@ fun HistoryTable(
                             .clip(RoundedCornerShape(4.dp))
                             .background(rowBg)
                             .border(0.5.dp, rowBorder, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                            .padding(horizontal = 8.dp, vertical = 5.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // 1. Roll #
                         Text(
                             text = "${item.executionNumber}",
                             fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace,
                             color = RaptechColors.TextSecondary,
-                            modifier = Modifier.weight(0.7f)
+                            modifier = Modifier.weight(0.4f)
                         )
+
+                        // 2. Nom Bet (Amount)
                         Text(
                             text = String.format(Locale.US, "%.6f", item.amount),
                             fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Medium,
                             color = RaptechColors.TextPrimary,
-                            modifier = Modifier.weight(1.8f)
+                            modifier = Modifier.weight(1.2f)
                         )
+
+                        // 3. Chance (Target Chance)
                         Text(
                             text = "${String.format(Locale.US, "%.1f", item.targetChance)}%",
                             fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace,
                             color = RaptechColors.TextSecondary,
-                            modifier = Modifier.weight(1.1f)
+                            modifier = Modifier.weight(0.8f)
                         )
-                        Text(
-                            text = String.format(Locale.US, "%.2f", item.rollResult),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            color = resultColor,
-                            modifier = Modifier.weight(1.1f)
-                        )
-                        Text(
-                            text = String.format(Locale.US, "%+.6f", item.netResult),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            color = resultColor,
-                            modifier = Modifier.weight(1.8f)
-                        )
-                        Text(
-                            text = "${item.nonce}",
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = RaptechColors.TextMuted,
-                            modifier = Modifier.weight(0.9f)
-                        )
+
+                        // 4. Win / Lose (Status & Net Result)
+                        Row(
+                            modifier = Modifier.weight(1.4f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "[$statusLabel]",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = resultColor
+                            )
+                            Text(
+                                text = String.format(Locale.US, "%+.6f", item.netResult),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = resultColor
+                            )
+                        }
                     }
                 }
             }

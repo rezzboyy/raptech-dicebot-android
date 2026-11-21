@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.raptech.dicebot.R
@@ -65,40 +66,52 @@ fun HeaderBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Left: Branding with safe flexible width
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
+                    .weight(1f, fill = false)
                     .clip(RoundedCornerShape(6.dp))
                     .clickable { onCheckUpdate() }
-                    .padding(vertical = 2.dp, horizontal = 4.dp)
+                    .padding(vertical = 2.dp, horizontal = 2.dp)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_dice),
                     contentDescription = null,
                     tint = RaptechColors.OrangePrimary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "RAPTECH AUTOMATION",
+                    text = "RAPTECH",
                     color = RaptechColors.TextPrimary,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.SansSerif,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.3.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "DICE",
+                    color = RaptechColors.OrangePrimary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1
                 )
                 Icon(
                     imageVector = Icons.Default.CloudDownload,
                     contentDescription = "Cek Pembaruan",
                     tint = RaptechColors.TextMuted,
-                    modifier = Modifier.size(13.dp)
+                    modifier = Modifier.size(12.dp)
                 )
             }
 
-            // Right side: Coin Selector Chip & Engine Status
+            // Right side: Coin Selector Chip & Engine Status with guaranteed space
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Interactive Coin Selector Pill with Soft Orange Tint
                 Box(
@@ -107,23 +120,23 @@ fun HeaderBar(
                         .background(RaptechColors.OrangeSoft)
                         .border(1.dp, RaptechColors.OrangeBorder, RoundedCornerShape(5.dp))
                         .clickable { onOpenCoinSelector() }
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                        .padding(horizontal = 6.dp, vertical = 2.5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_wallet_coin),
                             contentDescription = "Pilih Koin",
                             tint = RaptechColors.OrangePrimary,
-                            modifier = Modifier.size(13.dp)
+                            modifier = Modifier.size(11.dp)
                         )
                         Text(
                             text = state.selectedCurrency,
                             color = RaptechColors.OrangePrimary,
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         )
@@ -131,7 +144,7 @@ fun HeaderBar(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = null,
                             tint = RaptechColors.OrangePrimary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }
@@ -142,7 +155,7 @@ fun HeaderBar(
                         .clip(RoundedCornerShape(5.dp))
                         .background(if (state.isRunning) RaptechColors.OrangeSoft else RaptechColors.SurfaceLight)
                         .border(1.dp, if (state.isRunning) RaptechColors.OrangeBorder else RaptechColors.BorderSubtle, RoundedCornerShape(5.dp))
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                        .padding(horizontal = 6.dp, vertical = 2.5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -151,7 +164,7 @@ fun HeaderBar(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(6.dp)
+                                .size(5.dp)
                                 .clip(CircleShape)
                                 .background(
                                     when {
@@ -164,7 +177,7 @@ fun HeaderBar(
                         Text(
                             text = if (state.isRunning) (if (state.isPaused) "PAUSED" else "RUNNING") else "READY",
                             color = if (state.isRunning) RaptechColors.OrangePrimary else RaptechColors.TextSecondary,
-                            fontSize = 9.sp,
+                            fontSize = 8.5.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.SemiBold
                         )

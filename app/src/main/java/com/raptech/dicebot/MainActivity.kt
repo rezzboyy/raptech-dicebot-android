@@ -13,6 +13,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,6 +31,7 @@ import com.raptech.dicebot.data.updater.UpdateCheckResult
 import com.raptech.dicebot.data.updater.UpdateInfo
 import com.raptech.dicebot.service.DicebotForegroundService
 import com.raptech.dicebot.ui.components.DicebotUpdateDialog
+import com.raptech.dicebot.ui.components.SplashScreen
 import com.raptech.dicebot.ui.screens.DicebotMainScreen
 import com.raptech.dicebot.ui.theme.RaptechDicebotTheme
 import com.raptech.dicebot.util.BatteryOptimizationHelper
@@ -80,6 +83,7 @@ class MainActivity : ComponentActivity() {
                 var availableUpdate by remember { mutableStateOf<UpdateInfo?>(null) }
                 var isDownloadingUpdate by remember { mutableStateOf(false) }
                 var updateDownloadProgress by remember { mutableFloatStateOf(0f) }
+                var showSplash by remember { mutableStateOf(true) }
 
                 fun performUpdateCheck(isManual: Boolean = false) {
                     coroutineScope.launch {
@@ -125,71 +129,83 @@ class MainActivity : ComponentActivity() {
                     performUpdateCheck(isManual = false)
                 }
 
-                DicebotMainScreen(
-                    state = state,
-                    onStart = {
-                        startBotService(DicebotForegroundService.ACTION_START)
-                        botService?.startBot()
-                    },
-                    onPause = {
-                        botService?.pauseBot()
-                    },
-                    onResume = {
-                        botService?.resumeBot()
-                    },
-                    onStop = {
-                        botService?.stopBot()
-                    },
-                    onRefreshBalance = {
-                        botService?.refreshBalance()
-                    },
-                    onToggleStopOnWin = {
-                        botService?.toggleStopOnWin()
-                    },
-                    onPlatformSelected = { platform ->
-                        botService?.updatePlatform(platform)
-                    },
-                    onScriptChanged = { script ->
-                        botService?.updateScript(script)
-                    },
-                    onPresetSelected = { preset ->
-                        botService?.loadPreset(preset)
-                    },
-                    onSessionCaptured = { token ->
-                        botService?.savePlatformToken(state.selectedPlatform, token)
-                    },
-                    onLogout = {
-                        botService?.logoutPlatform(state.selectedPlatform)
-                    },
-                    onSaveRiskLimits = { stopLoss, takeProfit, maxBet ->
-                        botService?.updateRiskLimits(stopLoss, takeProfit, maxBet)
-                    },
-                    onCurrencySelected = { coin ->
-                        botService?.selectCurrency(coin)
-                    },
-                    onDetectCoins = {
-                        botService?.detectAvailableCoins(autoSelectActive = false)
-                    },
-                    onResetAll = {
-                        botService?.resetAll()
-                    },
-                    onResetStats = {
-                        botService?.resetStats()
-                    },
-                    onResetSeed = {
-                        botService?.resetSeed()
-                    },
-                    onCheckUpdate = {
-                        performUpdateCheck(isManual = true)
-                    },
-                    onRequestBatteryWhitelist = {
-                        BatteryOptimizationHelper.requestIgnoreBatteryOptimization(this@MainActivity)
-                    },
-                    showBatteryOptimizationPrompt = showBatteryPrompt,
-                    onDismissBatteryPrompt = {
-                        showBatteryPrompt = false
+                Crossfade(
+                    targetState = showSplash,
+                    animationSpec = tween(400),
+                    label = "SplashCrossfade"
+                ) { isSplash ->
+                    if (isSplash) {
+                        SplashScreen(
+                            onAnimationFinished = { showSplash = false }
+                        )
+                    } else {
+                        DicebotMainScreen(
+                            state = state,
+                            onStart = {
+                                startBotService(DicebotForegroundService.ACTION_START)
+                                botService?.startBot()
+                            },
+                            onPause = {
+                                botService?.pauseBot()
+                            },
+                            onResume = {
+                                botService?.resumeBot()
+                            },
+                            onStop = {
+                                botService?.stopBot()
+                            },
+                            onRefreshBalance = {
+                                botService?.refreshBalance()
+                            },
+                            onToggleStopOnWin = {
+                                botService?.toggleStopOnWin()
+                            },
+                            onPlatformSelected = { platform ->
+                                botService?.updatePlatform(platform)
+                            },
+                            onScriptChanged = { script ->
+                                botService?.updateScript(script)
+                            },
+                            onPresetSelected = { preset ->
+                                botService?.loadPreset(preset)
+                            },
+                            onSessionCaptured = { token ->
+                                botService?.savePlatformToken(state.selectedPlatform, token)
+                            },
+                            onLogout = {
+                                botService?.logoutPlatform(state.selectedPlatform)
+                            },
+                            onSaveRiskLimits = { stopLoss, takeProfit, maxBet ->
+                                botService?.updateRiskLimits(stopLoss, takeProfit, maxBet)
+                            },
+                            onCurrencySelected = { coin ->
+                                botService?.selectCurrency(coin)
+                            },
+                            onDetectCoins = {
+                                botService?.detectAvailableCoins(autoSelectActive = false)
+                            },
+                            onResetAll = {
+                                botService?.resetAll()
+                            },
+                            onResetStats = {
+                                botService?.resetStats()
+                            },
+                            onResetSeed = {
+                                botService?.resetSeed()
+                            },
+                            onCheckUpdate = {
+                                performUpdateCheck(isManual = true)
+                            },
+                            onRequestBatteryWhitelist = {
+                                BatteryOptimizationHelper.requestIgnoreBatteryOptimization(this@MainActivity)
+                            },
+                            showBatteryOptimizationPrompt = showBatteryPrompt,
+                            onDismissBatteryPrompt = {
+                                showBatteryPrompt = false
+                            }
+                        )
                     }
-                )
+                }
 
                 // Smooth In-App OTA Update Dialog
                 if (availableUpdate != null) {
