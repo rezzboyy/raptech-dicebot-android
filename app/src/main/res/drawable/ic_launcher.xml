@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#0B0E14"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- Outer Neon Amber Hexagon / Diamond -->
+    <path
+        android:fillColor="#1E2330"
+        android:strokeColor="#FFB300"
+        android:strokeWidth="3"
+        android:pathData="M54,16 L88,35 L88,73 L54,92 L20,73 L20,35 Z" />
+    <!-- Inner Dice / Lightning Bolt -->
+    <path
+        android:fillColor="#FFB300"
+        android:pathData="M58,26 L38,56 L52,56 L46,82 L70,50 L56,50 Z" />
+</vector>

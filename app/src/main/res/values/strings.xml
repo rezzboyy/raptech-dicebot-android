@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Raptech Dicebot</string>
+    <string name="notification_channel_name">Dicebot Running Service</string>
+    <string name="notification_channel_desc">Active bot execution status and real-time PnL</string>
+</resources>

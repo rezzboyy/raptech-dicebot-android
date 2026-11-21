@@ -1,0 +1,65 @@
+# Build artifacts
+build/
+dist/
+*.spec.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.log
+logs/
+
+# Reports (session summaries) — keep folder, ignore content
+reports/*
+!reports/.gitkeep
+
+# Exclude frontend source folders from logs/ ignore rule
+!frontend/components/logs/
+!frontend/app/logs/
+
+# Runtime data (sensitive / local)
+apitoken
+apitokens.json
+advancedset.json
+.wolfbet_token
+.wolfbet_runtime_settings.json
+license.json
+.raptech_heartbeat
+delivery/
+release/
+nolicense/
+
+# Build outputs (semua di folder builds/)
+builds/
+
+# IDE
+.vscode/
+.idea/
+.kiro/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Frontend
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Docker/local data
+postgres_data/
+redis_data/
+backups/

@@ -1,0 +1,13 @@
+colorama>=0.4.6
+requests>=2.31.0
+websocket-client>=1.7
+python-socketio[client]>=5.10
+curl_cffi>=0.7.0
+lupa>=2.0
+# Optional but recommended - orjson parse JSON 5x lebih cepat dari stdlib.
+# fast_json_loads() auto-fallback ke stdlib kalau tidak terinstall.
+orjson>=3.9.0
+# Optional - httpx dengan HTTP/2 + connection pool.
+# Enable via env: RAPTECH_HTTP_BACKEND=httpx
+# Auto-fallback ke requests kalau tidak terinstall.
+httpx[http2]>=0.27.0

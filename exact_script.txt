@@ -1,0 +1,41 @@
+--[[
+    RAPTECH AUTOMATION CONSOLE - BETFURY STRATEGY
+    Official Raptech Ecosystem (LUA Mode)
+]]
+
+base = balance/1e6
+pilose = 1.24
+palose = 1.238
+polose = 1.332
+pwin = 1.01
+target = base*10
+opit = balance*1.25
+lose = balance*0.5
+speeds = 0.0
+
+A1 = 4.5; B1 = 90; A2 = 24; B2 = 95
+A3 = 23; B3 = 33.5; A4 = 20; B4 = 45
+
+nextbet = base
+chance = 49.5
+bethigh = false
+
+function dobet()
+    if profit >= (opit - balance) then
+        print(string.format("TARGET OPIT REACHED: +%.8f %s! Stopping.", profit, currency))
+        stop()
+    end
+    if profit <= -(balance - lose) then
+        print(string.format("STOP LOSS HIT: %.8f %s! Stopping.", profit, currency))
+        stop()
+    end
+
+    if win then
+        print(string.format("[WIN #%d] Roll: %.2f | Profit: +%.8f", bets, lastBet.roll, lastBet.profit))
+        nextbet = base
+        chance = 49.5
+    else
+        print(string.format("[LOSE #%d] Roll: %.2f | Streak: %d", bets, lastBet.roll, currentstreak))
+        nextbet = previousbet * 2.0
+    end
+end

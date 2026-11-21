@@ -1,0 +1,351 @@
+═══════════════════════════════════════════════════════════════════
+  RAPTECH DICEBOT — DESKTOP BUILD GUIDE
+═══════════════════════════════════════════════════════════════════
+
+  Project  : Raptech Dicebot (GUI Desktop)
+  Framework: PySide6 (Qt6) + pyqtgraph + corebot engine
+  Output   : builds\desktop\raptech-dicebot.exe
+  Root     : C:\Users\Administrator\Desktop\Raptech Desktop Build
+
+═══════════════════════════════════════════════════════════════════
+  STRUKTUR PROJECT (wajib lengkap sebelum build/run)
+═══════════════════════════════════════════════════════════════════
+
+  Raptech Desktop Build\
+  ├── corebot\             ← ENGINE CORE (wajib ada, bukan generated)
+  │   ├── __init__.py
+  │   ├── config.py
+  │   ├── http_client.py
+  │   ├── lua_support.py
+  │   ├── machine_id.py
+  │   ├── models.py
+  │   ├── pricing.py
+  │   ├── storage.py
+  │   ├── cli\             (CLI engine)
+  │   ├── clients\         (11 site: betfury, wolfbet, stake, dll)
+  │   ├── engine\          (BotEngine + Lua runtime)
+  │   ├── license\         (license check + heartbeat)
+  │   └── ui\              (tema + widget CLI)
+  ├── desktop\             ← GUI frontend (PySide6)
+  ├── strategies\          ← file Lua strategy
+  ├── assets\              ← icon.ico / icon.png
+  ├── builds\desktop\      ← output exe
+  ├── bot.py               ← CLI entry point
+  ├── requirements.txt
+  └── pyproject.toml
+
+  ⚠ Jika folder corebot\ tidak ada, app TIDAK BISA jalan sama sekali
+    (ModuleNotFoundError: No module named 'corebot').
+    Salin manual dari lokasi sumber sebelum lanjut.
+
+═══════════════════════════════════════════════════════════════════
+  PRASYARAT (install sekali)
+═══════════════════════════════════════════════════════════════════
+
+  1. Python 3.10+ (dikembangkan di 3.12)
+
+  2. Install semua dependency:
+
+       pip install -r requirements.txt
+       pip install -r desktop\requirements-desktop.txt
+
+     Dependency utama:
+       PySide6>=6.6         — framework GUI Qt6
+       pyqtgraph>=0.13      — chart real-time
+       lupa>=2.0            — Lua runtime (LuaJIT/5.x)
+       curl_cffi>=0.7.0     — HTTP client utama
+       orjson>=3.9.0        — JSON parser cepat
+       httpx[http2]>=0.27.0 — HTTP/2 optional backend
+
+  3. Install PyInstaller (untuk build exe):
+
+       pip install pyinstaller
+
+═══════════════════════════════════════════════════════════════════
+  CARA JALANKAN (tanpa build exe — development)
+═══════════════════════════════════════════════════════════════════
+
+  cd /d "C:\Users\Administrator\Desktop\Raptech Desktop Build"
+  python desktop\app.py
+
+  ─ Pastikan folder strategies\ ada dan berisi minimal sample.lua.
+  ─ Untuk aktifkan konversi IDR:
+
+       set RAPTECH_IDR=1
+       python desktop\app.py
+
+═══════════════════════════════════════════════════════════════════
+  BUILD EXE (PyInstaller — onedir)
+═══════════════════════════════════════════════════════════════════
+
+  CARA TERCEPAT (recommended) — double-click Build.bat di root project:
+
+      Build.bat                 build biasa (onedir) — habis update source
+      Build.bat --onefile       single exe
+      Build.bat --deps          install/update dependency dulu, lalu build
+      Build.bat --clean         hapus builds\desktop lama (fresh build)
+      Build.bat --run           langsung jalankan exe setelah sukses
+      Build.bat --help          bantuan
+
+    Build.bat otomatis: cek Python + corebot\ + icon, install PyInstaller
+    kalau belum ada, backup & restore apitokens.json, verifikasi output.
+    Kombinasi bebas, mis. rilis bersih:  Build.bat --deps --clean
+
+  ATAU manual via Python:
+
+  cd /d "C:\Users\Administrator\Desktop\Raptech Desktop Build"
+  python scripts\build\build_desktop.py
+
+  → Output:
+       builds\desktop\raptech-dicebot.exe   ← launcher (~5-6 MB)
+       builds\desktop\_internal\            ← Qt + Python runtime (~156 MB)
+       builds\desktop\strategies\
+           sample.lua
+       builds\desktop\apitokens.json
+       builds\desktop\README.txt
+
+  ─ Build time: 30–60 detik (PyInstaller).
+  ─ Build pribadi: RAPTECH_IDR=1 sudah aktif otomatis via runtime hook.
+  ─ Jangan hapus folder _internal\ — runtime ada di sana.
+
+──────────────────────────────────────────────────────────────────
+  BUILD MANUAL PENUH (script bash / bat) — SETARA build_desktop.py
+──────────────────────────────────────────────────────────────────
+  Dua script berikut menjalankan PyInstaller langsung (tanpa Python
+  build script), sudah termasuk trik penting: enumerate SEMUA modul
+  corebot sebagai --hidden-import (client site di-load dinamis).
+
+  Bash (Git Bash / WSL / MSYS):
+      bash scripts/build/build_manual.sh
+      bash scripts/build/build_manual.sh --onefile
+
+  CMD Windows:
+      scripts\build\build_manual.bat
+      scripts\build\build_manual.bat --onefile
+
+  → Output: builds\desktop\raptech-dicebot.exe (+ _internal\)
+  Terverifikasi: exe boot, selftest 11 site OK, 14 SVG ter-bundle.
+
+──────────────────────────────────────────────────────────────────
+  Manual PyInstaller (perintah satu baris — referensi)
+──────────────────────────────────────────────────────────────────
+
+  cd /d "C:\Users\Administrator\Desktop\Raptech Desktop Build"
+
+  pyinstaller ^
+    --name raptech-dicebot ^
+    --icon assets\icon.ico ^
+    --distpath builds\desktop ^
+    --workpath builds\_pyinstaller_tmp ^
+    --specpath builds ^
+    --onedir ^
+    --noconfirm ^
+    --collect-all lupa ^
+    --collect-all corebot ^
+    --collect-all desktop ^
+    --add-data "assets\icons;assets\icons" ^
+    --exclude-module matplotlib ^
+    --exclude-module pandas ^
+    --exclude-module scipy ^
+    --exclude-module PIL ^
+    --exclude-module PyQt5 ^
+    --exclude-module PyQt6 ^
+    --exclude-module torch ^
+    desktop\app.py
+
+  Setelah build, copy manual ke output folder:
+    xcopy /E /I strategies builds\desktop\strategies
+    copy builds\desktop\raptech-dicebot\_internal\* builds\desktop\_internal\ 2>nul
+    copy assets\icon.ico builds\desktop\
+
+═══════════════════════════════════════════════════════════════════
+  CARA PAKAI SETELAH BUILD
+═══════════════════════════════════════════════════════════════════
+
+  1. Buka  builds\desktop\raptech-dicebot.exe
+  2. Menu  Site → Select Site & Connect
+           → Pilih site (betfury / wolfbet / testmode / dll)
+           → Paste API token
+           → Klik Connect
+  3. Toolbar bawah: pilih Strategy · Currency · Interval (ms)
+  4. Klik  Start
+
+  Strategi Lua baru: taruh file *.lua di folder strategies\
+  (lalu reload lewat Code Editor atau restart app).
+
+  Ganti tema: klik tombol SUN/MOON di pojok kanan menu bar
+  (atau menu View → Toggle Light/Dark Theme). Default: Light.
+  Pilihan tema tersimpan otomatis untuk sesi berikutnya.
+
+  Tema lanjutan (menu View):
+    - Theme: Light / Dark / Midnight / High-Contrast (aksesibilitas).
+    - Font Size: Small / Medium / Large.
+    - Custom Accent Color... : pilih warna accent sendiri (+ Reset Accent).
+
+  Regenerate app icon dari brand SVG (assets/app.svg):
+    python scripts\build\make_app_icon.py
+    → update assets\icon.png + assets\icon.ico (backup lama: icon_backup.ico)
+
+  Shortcut keyboard:
+    F5 Start · F6 Pause/Resume · F7 Stop · F8 Check strategy
+    Ctrl+S Save · Ctrl+O Open · Ctrl+R Refresh · Ctrl+K Connect
+    Ctrl+F Find/Replace · Ctrl+H Toggle Chart · Ctrl+D Toggle Theme
+
+═══════════════════════════════════════════════════════════════════
+  STRUKTUR FOLDER SETELAH BUILD
+═══════════════════════════════════════════════════════════════════
+
+  builds\desktop\
+  ├── raptech-dicebot.exe      ← jalankan ini
+  ├── apitokens.json           ← token per-site (jangan di-share)
+  ├── strategies\
+  │   └── sample.lua
+  ├── README.txt
+  └── _internal\               ← JANGAN DIHAPUS / DIPINDAH
+      ├── base_library.zip
+      ├── assets\icons\        ← 14 SVG icon (tema + tombol)
+      ├── PySide6\             (termasuk QtSvg untuk render icon)
+      ├── lupa\
+      └── ...  (corebot & modul GUI di-bundle dalam arsip PYZ)
+
+═══════════════════════════════════════════════════════════════════
+  ENV VARIABLES (tuning runtime)
+═══════════════════════════════════════════════════════════════════
+
+  RAPTECH_IDR          Aktif otomatis di build pribadi.
+                       Konversi live IDR di panel & summary.
+                       Set manual: set RAPTECH_IDR=1
+
+  RAPTECH_HTTP_BACKEND HTTP client: httpx (HTTP/2) | curl_cffi | requests
+                       Default: requests.
+                       Set httpx untuk koneksi lebih cepat.
+
+  RAPTECH_LUA          Lua runtime: luajit21 (fastest) | lua55 | lua54
+                       Default: auto (prefer LuaJIT).
+
+  RAPTECH_REDRAW_FPS   Refresh rate panel GUI. Default: 15
+                       Kurangi ke 10 kalau RDP lag.
+                       Naikkan ke 30 di Windows Terminal lokal.
+
+  RAPTECH_CHART_AA     Antialias chart. Default: ON — garis halus/HD.
+                       Set 0 untuk matikan (hanya kalau RDP sangat lambat).
+
+  Contoh set sebelum jalankan (CMD):
+    set RAPTECH_HTTP_BACKEND=httpx
+    set RAPTECH_REDRAW_FPS=10
+    builds\desktop\raptech-dicebot.exe
+
+═══════════════════════════════════════════════════════════════════
+  ALUR KERJA (Development → Build → Release)
+═══════════════════════════════════════════════════════════════════
+
+    ┌──────────────────────┐
+    │  Edit source code    │
+    │  desktop\ / corebot\ │
+    └──────────┬───────────┘
+               │
+               ▼
+    ┌──────────────────────┐
+    │  Test langsung:      │
+    │  python desktop\app.py│
+    └──────────┬───────────┘
+               │ Jalan & stabil?
+          ┌────┴────┐
+         Tidak      Ya
+          │         │
+        Edit        ▼
+        lagi  ┌──────────────────────┐
+              │  Build exe:          │
+              │  build_desktop.py    │
+              │  → builds\desktop\   │
+              └──────────┬───────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │  Test exe di RDP:    │
+              │  raptech-dicebot.exe │
+              │  · Connect testmode  │
+              │  · Run ~100 bet      │
+              │  · Cek semua panel   │
+              └──────────┬───────────┘
+                         │ OK?
+                    ┌────┴────┐
+                   Tidak      Ya
+                    │         │
+                  Fix bug     ▼
+                        Distribusi ke user
+                        (bersihkan apitokens.json
+                         sebelum share)
+
+═══════════════════════════════════════════════════════════════════
+  TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+
+  App tidak terbuka / crash diam-diam
+  ─────────────────────────────────────
+  → Jalankan dari CMD untuk lihat traceback:
+       builds\desktop\raptech-dicebot.exe
+  → Pastikan folder _internal\ ada di lokasi yang sama dengan .exe.
+  → Cek encoding terminal: chcp 65001
+
+  "No module named 'corebot'" saat python desktop\app.py
+  ─────────────────────────────────────
+  → Folder corebot\ belum ada di root project.
+  → Salin dari lokasi sumber:
+       xcopy /E /I "sumber\corebot" "C:\Users\Administrator\Desktop\Raptech Desktop Build\corebot"
+  → Pastikan struktur: corebot\__init__.py, corebot\engine\, corebot\clients\,
+    corebot\license\, corebot\models.py, corebot\config.py ada semua.
+
+  GUI lag / freeze di RDP
+  ─────────────────────────────────────
+  → Set: set RAPTECH_REDRAW_FPS=10
+  → Qt pakai CPU render — aman di RDP tapi bergantung bandwidth.
+
+  "Module not found" saat build
+  ─────────────────────────────────────
+  → Pastikan semua dep terinstall di environment aktif:
+       pip install -r requirements.txt
+       pip install -r desktop\requirements-desktop.txt
+  → Pakai: pip install --upgrade pyinstaller
+
+  App jalan tapi chart/panel kosong
+  ─────────────────────────────────────
+  → Connect ke site dulu (Site → Select Site & Connect).
+  → Tekan Start di toolbar bawah — panel update setelah sesi mulai.
+
+  Token tidak tersimpan / tidak terbaca
+  ─────────────────────────────────────
+  → Pastikan apitokens.json ada di folder yang sama dengan .exe.
+  → Format JSON: { "namasite": "TOKEN_VALUE" }
+  → Betfury butuh format: JWT;uid=...
+
+  Lisensi expired di tengah sesi
+  ─────────────────────────────────────
+  → Bot otomatis kembali ke prompt aktivasi — tidak perlu restart.
+  → Input kode lisensi baru di prompt yang muncul.
+
+═══════════════════════════════════════════════════════════════════
+  SITE YANG DIDUKUNG (11 site)
+═══════════════════════════════════════════════════════════════════
+
+  betfury · dogepick · faucetpay · jacksclub · nuts
+  paradice · pasino · stake · tronpick · wolfbet
+  testmode (simulator lokal, tanpa token, tanpa dana nyata)
+
+═══════════════════════════════════════════════════════════════════
+  CATATAN DISTRIBUSI
+═══════════════════════════════════════════════════════════════════
+
+  ✓  Sertakan semua isi builds\desktop\ (termasuk _internal\).
+  ✓  apitokens.json boleh kosong atau berisi placeholder.
+  ✗  Jangan sertakan token pribadi aktif di apitokens.json.
+  ✗  Jangan share RAPTECH_LICENSE_SECRET.
+
+  File minimum untuk distribusi:
+    raptech-dicebot.exe
+    _internal\            (wajib)
+    strategies\sample.lua
+    apitokens.json        (kosong)
+    README.txt
+
+═══════════════════════════════════════════════════════════════════
