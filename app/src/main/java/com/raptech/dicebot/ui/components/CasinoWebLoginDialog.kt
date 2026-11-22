@@ -13,6 +13,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import org.json.JSONObject
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -209,7 +210,7 @@ fun CasinoWebLoginDialog(
         }
     }
 
-    fun verifyAndConnectSession(cookiesRaw: String) {
+    fun verifyAndConnectSession(cookiesRaw: String, fallbackBalance: Double = 0.0) {
         val clean = cookiesRaw.trim()
         if (clean.isBlank()) {
             verificationStatusMessage = "⚠ Belum ada cookie/sesi yang ditemukan."
@@ -221,7 +222,11 @@ fun CasinoWebLoginDialog(
 
         coroutineScope.launch {
             val testAdapter: CasinoPlatformAdapter = if (platform == CasinoPlatform.BETFURY) {
-                BetfuryAdapter(clean)
+                val bAdapter = BetfuryAdapter(clean)
+                if (fallbackBalance > 0.0) {
+                    bAdapter.setInitialBalance(platform.defaultCurrency, fallbackBalance)
+                }
+                bAdapter
             } else {
                 PickIoAdapter(platform, clean)
             }
@@ -229,8 +234,8 @@ fun CasinoWebLoginDialog(
 
             withContext(Dispatchers.Main) {
                 isVerifyingSession = false
-                if (balanceRes.isSuccess) {
-                    val bal = balanceRes.getOrThrow()
+                if (balanceRes.isSuccess || (platform == CasinoPlatform.BETFURY && fallbackBalance > 0.0)) {
+                    val bal = if (balanceRes.isSuccess) balanceRes.getOrThrow() else fallbackBalance
                     isDetectedSuccess = true
                     detectedSession = clean
                     verificationStatusMessage = "✅ Berhasil Terhubung! Saldo: $bal ${platform.defaultCurrency}"
@@ -597,6 +602,27 @@ fun CasinoWebLoginDialog(
                                                     verifyAndConnectSession(cookies)
                                                 }
                                             }
+
+                                            @JavascriptInterface
+                                            fun onBetfuryAuthCaptured(jsonStr: String) {
+                                                post {
+                                                    try {
+                                                        val obj = JSONObject(jsonStr)
+                                                        val token = obj.optString("token")
+                                                        val uid = obj.optString("uid")
+                                                        val bal = obj.optDouble("balance", 0.0)
+                                                        val cookieManager = CookieManager.getInstance()
+                                                        val cookies = cookieManager.getCookie("https://betfury.com") ?: ""
+                                                        var s = if (token.isNotBlank()) token else "betfury_session"
+                                                        if (uid.isNotBlank()) s += ";uid=$uid"
+                                                        if (bal > 0.0) s += ";bal=$bal"
+                                                        if (cookies.isNotBlank()) s += ";cookies=$cookies"
+                                                        verifyAndConnectSession(s, bal)
+                                                    } catch (_: Exception) {
+                                                        verifyAndConnectSession(jsonStr)
+                                                    }
+                                                }
+                                            }
                                         }, "DicebotBridge")
 
                                         webViewClient = object : WebViewClient() {
@@ -664,41 +690,41 @@ fun CasinoWebLoginDialog(
                                                     val betfuryCheckScript = """
                                                         (function() {
                                                             try {
-                                                                var token = '';
-                                                                var uid = '';
-                                                                var directKeys = ['token', 'auth_token', 'jwt', 'bf_token', 'accessToken', 'session_token'];
-                                                                for (var i = 0; i < directKeys.length; i++) {
-                                                                    var v = window.localStorage.getItem(directKeys[i]);
-                                                                    if (v && v.length > 10) { token = v.replace(/^"|"$/g, ''); break; }
-                                                                }
-                                                                if (!token) {
-                                                                    for (var j = 0; j < window.localStorage.length; j++) {
-                                                                        var k = window.localStorage.key(j);
-                                                                        var val = window.localStorage.getItem(k);
-                                                                        if (val && val.indexOf('eyJ') !== -1) {
-                                                                            var m = val.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
-                                                                            if (m) { token = m[0]; break; }
+                                                                var res = { token: '', uid: '', balance: 0.0, currency: 'BFG' };
+                                                                if (window.${'$'}nuxt && window.${'$'}nuxt.${'$'}store && window.${'$'}nuxt.${'$'}store.state) {
+                                                                    var s = window.${'$'}nuxt.${'$'}store.state;
+                                                                    var u = s.user || s.auth || s.profile;
+                                                                    if (u) {
+                                                                        if (u.token) res.token = u.token;
+                                                                        if (u.userId || u.id || u.uid) res.uid = String(u.userId || u.id || u.uid);
+                                                                        if (u.currencies) {
+                                                                            var bfg = u.currencies.bfg || u.currencies.BFG;
+                                                                            if (bfg && bfg.balance != null) res.balance = parseFloat(bfg.balance);
                                                                         }
                                                                     }
                                                                 }
-                                                                if (!token && window.sessionStorage) {
-                                                                    for (var s = 0; s < window.sessionStorage.length; s++) {
-                                                                        var sk = window.sessionStorage.key(s);
-                                                                        var sv = window.sessionStorage.getItem(sk);
-                                                                        if (sv && sv.indexOf('eyJ') !== -1) {
-                                                                            var sm = sv.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
-                                                                            if (sm) { token = sm[0]; break; }
+                                                                if (!res.token) {
+                                                                    var directKeys = ['token', 'auth_token', 'jwt', 'bf_token', 'accessToken', 'session_token'];
+                                                                    for (var i = 0; i < directKeys.length; i++) {
+                                                                        var v = window.localStorage.getItem(directKeys[i]);
+                                                                        if (v && v.length > 10) { res.token = v.replace(/^"|"$/g, ''); break; }
+                                                                    }
+                                                                }
+                                                                if (res.balance <= 0) {
+                                                                    var all = document.querySelectorAll('span, div, p');
+                                                                    for (var j = 0; j < all.length; j++) {
+                                                                        var el = all[j];
+                                                                        if (el.children.length === 0 && el.innerText) {
+                                                                            var t = el.innerText.trim();
+                                                                            if (/^\d+\.\d{4,8}$/.test(t)) {
+                                                                                var num = parseFloat(t);
+                                                                                if (num > 0) { res.balance = num; break; }
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
-                                                                var uKeys = ['uid', 'userId', 'user_id', 'id'];
-                                                                for (var u = 0; u < uKeys.length; u++) {
-                                                                    var uv = window.localStorage.getItem(uKeys[u]);
-                                                                    if (uv) { uid = uv.replace(/^"|"$/g, ''); break; }
-                                                                }
-                                                                if (token && window.DicebotBridge) {
-                                                                    var cred = uid ? (token + ';uid=' + uid) : token;
-                                                                    window.DicebotBridge.onAuthSuccess(cred);
+                                                                if ((res.token || res.balance > 0) && window.DicebotBridge) {
+                                                                    window.DicebotBridge.onBetfuryAuthCaptured(JSON.stringify(res));
                                                                 }
                                                             } catch(e) {}
                                                         })();
@@ -822,54 +848,107 @@ fun CasinoWebLoginDialog(
                                         if (platform == CasinoPlatform.BETFURY) {
                                             val extractScript = """
                                                 (function() {
+                                                    var res = {
+                                                        token: '',
+                                                        uid: '',
+                                                        balance: 0.0,
+                                                        currency: 'BFG'
+                                                    };
+
+                                                    // 1. Nuxt store extraction
                                                     try {
-                                                        var token = '';
-                                                        var uid = '';
+                                                        if (window.${'$'}nuxt && window.${'$'}nuxt.${'$'}store && window.${'$'}nuxt.${'$'}store.state) {
+                                                            var s = window.${'$'}nuxt.${'$'}store.state;
+                                                            var u = s.user || s.auth || s.profile;
+                                                            if (u) {
+                                                                if (u.token) res.token = u.token;
+                                                                if (u.userId || u.id || u.uid) res.uid = String(u.userId || u.id || u.uid);
+                                                                if (u.currencies) {
+                                                                    var bfg = u.currencies.bfg || u.currencies.BFG;
+                                                                    if (bfg && bfg.balance != null) res.balance = parseFloat(bfg.balance);
+                                                                }
+                                                            }
+                                                            if (!res.token && s.auth && s.auth.token) res.token = s.auth.token;
+                                                        }
+                                                    } catch(e) {}
+
+                                                    // 2. Direct localStorage scan
+                                                    try {
                                                         var directKeys = ['token', 'auth_token', 'jwt', 'bf_token', 'accessToken', 'session_token'];
                                                         for (var i = 0; i < directKeys.length; i++) {
                                                             var v = window.localStorage.getItem(directKeys[i]);
-                                                            if (v && v.length > 10) { token = v.replace(/^"|"$/g, ''); break; }
+                                                            if (v && v.length > 10 && !res.token) {
+                                                                res.token = v.replace(/^"|"$/g, '');
+                                                                break;
+                                                            }
                                                         }
-                                                        if (!token) {
+                                                        if (!res.token) {
                                                             for (var j = 0; j < window.localStorage.length; j++) {
                                                                 var k = window.localStorage.key(j);
                                                                 var val = window.localStorage.getItem(k);
                                                                 if (val && val.indexOf('eyJ') !== -1) {
                                                                     var m = val.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
-                                                                    if (m) { token = m[0]; break; }
+                                                                    if (m) { res.token = m[0]; break; }
                                                                 }
                                                             }
                                                         }
-                                                        if (!token && window.sessionStorage) {
-                                                            for (var s = 0; s < window.sessionStorage.length; s++) {
-                                                                var sk = window.sessionStorage.key(s);
-                                                                var sv = window.sessionStorage.getItem(sk);
-                                                                if (sv && sv.indexOf('eyJ') !== -1) {
-                                                                    var sm = sv.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
-                                                                    if (sm) { token = sm[0]; break; }
+                                                        if (!res.uid) {
+                                                            var uKeys = ['uid', 'userId', 'user_id', 'id'];
+                                                            for (var u2 = 0; u2 < uKeys.length; u2++) {
+                                                                var uv = window.localStorage.getItem(uKeys[u2]);
+                                                                if (uv) { res.uid = uv.replace(/^"|"$/g, ''); break; }
+                                                            }
+                                                        }
+                                                    } catch(e) {}
+
+                                                    // 3. Extract DOM balance (e.g. 24.5006732)
+                                                    try {
+                                                        if (res.balance <= 0) {
+                                                            var allElements = document.querySelectorAll('span, div, p');
+                                                            for (var e = 0; e < allElements.length; e++) {
+                                                                var el = allElements[e];
+                                                                if (el.children.length === 0 && el.innerText) {
+                                                                    var txt = el.innerText.trim();
+                                                                    if (/^\d+\.\d{4,8}$/.test(txt)) {
+                                                                        var parsed = parseFloat(txt);
+                                                                        if (parsed > 0) {
+                                                                            res.balance = parsed;
+                                                                            break;
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
                                                         }
-                                                        var uKeys = ['uid', 'userId', 'user_id', 'id'];
-                                                        for (var u = 0; u < uKeys.length; u++) {
-                                                            var uv = window.localStorage.getItem(uKeys[u]);
-                                                            if (uv) { uid = uv.replace(/^"|"$/g, ''); break; }
-                                                        }
-                                                        return token ? (uid ? (token + ';uid=' + uid) : token) : '';
-                                                    } catch(e) { return ''; }
+                                                    } catch(e) {}
+
+                                                    return JSON.stringify(res);
                                                 })()
                                             """.trimIndent()
 
                                             webViewRef?.evaluateJavascript(extractScript) { res ->
-                                                val cleanToken = res?.trim('"', '\'')?.replace("\\\"", "\"")?.trim() ?: ""
+                                                var tokenExtracted = ""
+                                                var uidExtracted = ""
+                                                var domBal = 0.0
+
+                                                try {
+                                                    val rawJson = res?.trim('"', '\'')?.replace("\\\"", "\"")?.replace("\\\\", "\\") ?: ""
+                                                    if (rawJson.startsWith("{") && rawJson.endsWith("}")) {
+                                                        val obj = JSONObject(rawJson)
+                                                        tokenExtracted = obj.optString("token", "")
+                                                        uidExtracted = obj.optString("uid", "")
+                                                        domBal = obj.optDouble("balance", 0.0)
+                                                    }
+                                                } catch (_: Exception) {}
+
                                                 val cookieManager = CookieManager.getInstance()
-                                                val currentCookies = cookieManager.getCookie(currentUrlDisplay) ?: cookieManager.getCookie(platform.defaultLoginUrl) ?: ""
-                                                val finalSession = if (cleanToken.isNotBlank() && cleanToken != "null") {
-                                                    if (currentCookies.isNotBlank()) "$cleanToken;cookies=$currentCookies" else cleanToken
-                                                } else {
-                                                    currentCookies
-                                                }
-                                                verifyAndConnectSession(finalSession)
+                                                val currentCookies = cookieManager.getCookie(currentUrlDisplay) ?: cookieManager.getCookie("https://betfury.com") ?: ""
+
+                                                var finalSession = if (tokenExtracted.isNotBlank()) tokenExtracted else "betfury_session"
+                                                if (uidExtracted.isNotBlank()) finalSession += ";uid=$uidExtracted"
+                                                if (domBal > 0.0) finalSession += ";bal=$domBal"
+                                                if (currentCookies.isNotBlank()) finalSession += ";cookies=$currentCookies"
+
+                                                verifyAndConnectSession(finalSession, domBal)
                                             }
                                         } else {
                                             val cookieManager = CookieManager.getInstance()

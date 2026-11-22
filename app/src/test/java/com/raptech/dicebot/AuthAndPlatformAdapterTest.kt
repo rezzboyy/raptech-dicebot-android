@@ -269,11 +269,18 @@ class AuthAndPlatformAdapterTest {
         assertEquals("user_999_bet", uid4)
         assertEquals("user", fp4)
 
-        // Test session token with cookies suffix
-        val rawWithCookiesSuffix = "eyJhbGciOiJIUzI1NiJ9.payload.signature;uid=555_session;cookies=_ga=123; session=abc"
+        // Test session token with cookies suffix and bal parameter
+        val rawWithCookiesSuffix = "eyJhbGciOiJIUzI1NiJ9.payload.signature;uid=555_session;bal=24.5006732;cookies=_ga=123; session=abc"
         val (token5, uid5, fp5) = BetfuryAdapter.parseCredentials(rawWithCookiesSuffix)
         assertEquals("eyJhbGciOiJIUzI1NiJ9.payload.signature", token5)
         assertEquals("555_session", uid5)
         assertEquals("555", fp5)
+
+        val adapter = BetfuryAdapter(rawWithCookiesSuffix)
+        runBlocking {
+            val balRes = adapter.fetchBalance("BFG")
+            assertTrue(balRes.isSuccess)
+            assertEquals(24.5006732, balRes.getOrNull() ?: 0.0, 0.0000001)
+        }
     }
 }

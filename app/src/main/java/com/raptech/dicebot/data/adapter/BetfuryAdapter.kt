@@ -32,6 +32,16 @@ class BetfuryAdapter(
         private const val BASE_URL = "https://betfury.com"
         private const val BASE_WS = "wss://betfury.com"
 
+        private fun logD(msg: String) {
+            try { Log.d(TAG, msg) } catch (_: Throwable) { println("[$TAG] $msg") }
+        }
+        private fun logW(msg: String) {
+            try { Log.w(TAG, msg) } catch (_: Throwable) { println("[$TAG] WARN: $msg") }
+        }
+        private fun logE(msg: String) {
+            try { Log.e(TAG, msg) } catch (_: Throwable) { System.err.println("[$TAG] ERROR: $msg") }
+        }
+
         fun parseCredentials(raw: String): Triple<String, String, String> {
             val trimmed = raw.trim().trim('"', '\'')
             var token = ""
@@ -136,7 +146,23 @@ class BetfuryAdapter(
         pureToken = parsed.first
         uid = parsed.second
         fingerprint = parsed.third
+
+        // Parse initial balance if present (e.g. bal=24.5006732)
+        val balRegex = Regex("""(?:bal|balance)=([0-9.]+)""")
+        balRegex.find(rawCredential)?.groupValues?.get(1)?.toDoubleOrNull()?.let { b ->
+            if (b > 0.0) {
+                cachedBalances[activeCurrency] = b
+            }
+        }
         disconnect()
+    }
+
+    fun setInitialBalance(currency: String, balance: Double) {
+        if (balance > 0.0) {
+            val cur = currency.uppercase(Locale.ROOT)
+            cachedBalances[cur] = balance
+            isAuthed = true
+        }
     }
 
     fun getCredentials(): String = rawCredential
@@ -210,7 +236,7 @@ class BetfuryAdapter(
 
             webSocket = client.newWebSocket(wsRequest, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
-                    Log.d(TAG, "WebSocket open. Sending probe...")
+                    logD("WebSocket open. Sending probe...")
                     webSocket.send("2probe")
                 }
 
@@ -219,13 +245,13 @@ class BetfuryAdapter(
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                    Log.d(TAG, "WebSocket closing: $code / $reason")
+                    logD("WebSocket closing: $code / $reason")
                     isConnected = false
                     isAuthed = false
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Log.e(TAG, "WebSocket failure: ${t.message}")
+                    logE("WebSocket failure: ${t.message}")
                     isConnected = false
                     isAuthed = false
                     authDeferred?.completeExceptionally(t)
@@ -241,7 +267,7 @@ class BetfuryAdapter(
             try {
                 joinDiceRoom()
             } catch (e: Exception) {
-                Log.w(TAG, "Dice room join warning: ${e.message}")
+                logW("Dice room join warning: ${e.message}")
             }
         }
     }
@@ -253,6 +279,12 @@ class BetfuryAdapter(
         if (msg == "3probe") {
             ws.send("5") // upgrade confirmation
             ws.send("40") // connect namespace /
+            return
+        }
+
+        // 1b. Socket.IO Namespace connected: 40 or 40{"sid":"..."}
+        if (msg.startsWith("40")) {
+            logD("Socket.IO namespace connected. Sending auth token packet...")
             sendAuthTokenPacket(ws)
             return
         }
@@ -265,7 +297,7 @@ class BetfuryAdapter(
 
         // 3. Token error detection
         if (msg.contains("token_error", ignoreCase = true)) {
-            Log.e(TAG, "Betfury server returned token_error!")
+            logE("Betfury server returned token_error!")
             authDeferred?.completeExceptionally(IllegalStateException("Token Betfury ditolak oleh server (token_error / expired)."))
             ackCallbacks.values.forEach { it.completeExceptionally(IllegalStateException("Token Betfury expired.")) }
             ackCallbacks.clear()
@@ -353,7 +385,7 @@ class BetfuryAdapter(
                 }
             } catch (e: Exception) {
                 if (isAuthed || cachedBalances.isNotEmpty()) {
-                    Log.d(TAG, "Auth ack timed out but session already authenticated via event 42.")
+                    logD("Auth ack timed out but session already authenticated via event 42.")
                     authDeferred?.complete(true)
                 } else {
                     authDeferred?.completeExceptionally(e)
@@ -374,7 +406,7 @@ class BetfuryAdapter(
             val bal = coinObj?.optDouble("balance", 0.0) ?: 0.0
             cachedBalances[coin.uppercase(Locale.ROOT)] = bal
         }
-        Log.d(TAG, "Auto-detected ${cachedBalances.size} currencies from Betfury wallet.")
+        logD("Auto-detected ${cachedBalances.size} currencies from Betfury wallet.")
     }
 
     private suspend fun emitWithAck(eventName: String, payload: Any, timeoutMs: Long = 8000L): String {
@@ -422,22 +454,28 @@ class BetfuryAdapter(
             }
             true
         } catch (e: Exception) {
-            Log.w(TAG, "Gagal changeCurrency Betfury ke $target: ${e.message}")
+            logW("Gagal changeCurrency Betfury ke $target: ${e.message}")
             false
         }
     }
 
     override suspend fun fetchBalance(currency: String): Result<Double> = withContext(Dispatchers.IO) {
+        val cur = currency.uppercase(Locale.ROOT)
         try {
             ensureConnected()
-            val cur = currency.uppercase(Locale.ROOT)
             if (!cachedBalances.containsKey(cur) || cur != activeCurrency) {
                 changeCurrency(cur)
             }
             val bal = cachedBalances[cur] ?: 0.0
             Result.success(bal)
         } catch (e: Exception) {
-            Result.failure(e)
+            val fallbackBal = cachedBalances[cur]
+            if (fallbackBal != null && fallbackBal > 0.0) {
+                logW("WebSocket belum siap atau ditahan Cloudflare, menggunakan saldo aktif: $fallbackBal")
+                Result.success(fallbackBal)
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
