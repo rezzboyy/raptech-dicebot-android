@@ -261,5 +261,19 @@ class AuthAndPlatformAdapterTest {
         assertEquals("my_custom_pure_token_xyz", token3)
         assertEquals("", uid3)
         assertEquals("", fp3)
+
+        // Test cookie string with multiple cookies where JWT is embedded
+        val rawCookies = "_ga=GA1.1.123456789; cf_clearance=abcdef; token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyXzk5OV9iZXQifQ.sig123; uid=user_999_bet"
+        val (token4, uid4, fp4) = BetfuryAdapter.parseCredentials(rawCookies)
+        assertEquals("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyXzk5OV9iZXQifQ.sig123", token4)
+        assertEquals("user_999_bet", uid4)
+        assertEquals("user", fp4)
+
+        // Test session token with cookies suffix
+        val rawWithCookiesSuffix = "eyJhbGciOiJIUzI1NiJ9.payload.signature;uid=555_session;cookies=_ga=123; session=abc"
+        val (token5, uid5, fp5) = BetfuryAdapter.parseCredentials(rawWithCookiesSuffix)
+        assertEquals("eyJhbGciOiJIUzI1NiJ9.payload.signature", token5)
+        assertEquals("555_session", uid5)
+        assertEquals("555", fp5)
     }
 }

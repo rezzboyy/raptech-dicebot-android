@@ -147,7 +147,11 @@ fun CasinoWebLoginDialog(
     var selectedLoginTab by remember { mutableIntStateOf(0) } // 0: In-App Browser, 1: Manual Token/Cookie Input
 
     val loginUrl = remember(platform) {
-        if (platform.defaultLoginUrl.isNotBlank()) "${platform.defaultLoginUrl}/login.php" else ""
+        if (platform == CasinoPlatform.BETFURY) {
+            "https://betfury.com"
+        } else if (platform.defaultLoginUrl.isNotBlank()) {
+            "${platform.defaultLoginUrl}/login.php"
+        } else ""
     }
 
     // State Browser
@@ -449,25 +453,67 @@ fun CasinoWebLoginDialog(
                                 }
                             }
 
-                            // Quick Jump to Login.php
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(RaptechColors.SurfaceWhite)
-                                    .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(4.dp))
-                                    .clickable {
-                                        hasLoadError = false
-                                        webViewRef?.loadUrl(loginUrl)
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 5.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Ke Login.php",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = RaptechColors.TextPrimary
-                                )
+                            // Quick Navigation Buttons
+                            if (platform == CasinoPlatform.BETFURY) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(RaptechColors.SurfaceWhite)
+                                        .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(4.dp))
+                                        .clickable {
+                                            hasLoadError = false
+                                            webViewRef?.loadUrl("https://betfury.com")
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Ke Betfury",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = RaptechColors.TextPrimary
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(RaptechColors.SurfaceWhite)
+                                        .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(4.dp))
+                                        .clickable {
+                                            hasLoadError = false
+                                            webViewRef?.loadUrl("https://betfury.com/casino/games/dice")
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Ke Game Dice",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = RaptechColors.TextPrimary
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(RaptechColors.SurfaceWhite)
+                                        .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(4.dp))
+                                        .clickable {
+                                            hasLoadError = false
+                                            webViewRef?.loadUrl(loginUrl)
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Ke Login.php",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = RaptechColors.TextPrimary
+                                    )
+                                }
                             }
 
                             // Notice message
@@ -483,7 +529,7 @@ fun CasinoWebLoginDialog(
                                 )
                             } else {
                                 Text(
-                                    text = "Isi form ➔ pecahkan captcha ➔ Log in",
+                                    text = if (platform == CasinoPlatform.BETFURY) "Login / Sign in di atas ➔ Verifikasi Sesi" else "Isi form ➔ pecahkan captcha ➔ Log in",
                                     fontSize = 10.sp,
                                     color = RaptechColors.TextMuted,
                                     maxLines = 1,
@@ -618,10 +664,40 @@ fun CasinoWebLoginDialog(
                                                     val betfuryCheckScript = """
                                                         (function() {
                                                             try {
-                                                                var t = window.localStorage.getItem('token') || window.localStorage.getItem('auth_token');
-                                                                var u = window.localStorage.getItem('uid') || window.localStorage.getItem('userId');
-                                                                if (t && window.DicebotBridge) {
-                                                                    var cred = u ? (t + ';uid=' + u) : t;
+                                                                var token = '';
+                                                                var uid = '';
+                                                                var directKeys = ['token', 'auth_token', 'jwt', 'bf_token', 'accessToken', 'session_token'];
+                                                                for (var i = 0; i < directKeys.length; i++) {
+                                                                    var v = window.localStorage.getItem(directKeys[i]);
+                                                                    if (v && v.length > 10) { token = v.replace(/^"|"$/g, ''); break; }
+                                                                }
+                                                                if (!token) {
+                                                                    for (var j = 0; j < window.localStorage.length; j++) {
+                                                                        var k = window.localStorage.key(j);
+                                                                        var val = window.localStorage.getItem(k);
+                                                                        if (val && val.indexOf('eyJ') !== -1) {
+                                                                            var m = val.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+                                                                            if (m) { token = m[0]; break; }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                if (!token && window.sessionStorage) {
+                                                                    for (var s = 0; s < window.sessionStorage.length; s++) {
+                                                                        var sk = window.sessionStorage.key(s);
+                                                                        var sv = window.sessionStorage.getItem(sk);
+                                                                        if (sv && sv.indexOf('eyJ') !== -1) {
+                                                                            var sm = sv.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+                                                                            if (sm) { token = sm[0]; break; }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                var uKeys = ['uid', 'userId', 'user_id', 'id'];
+                                                                for (var u = 0; u < uKeys.length; u++) {
+                                                                    var uv = window.localStorage.getItem(uKeys[u]);
+                                                                    if (uv) { uid = uv.replace(/^"|"$/g, ''); break; }
+                                                                }
+                                                                if (token && window.DicebotBridge) {
+                                                                    var cred = uid ? (token + ';uid=' + uid) : token;
                                                                     window.DicebotBridge.onAuthSuccess(cred);
                                                                 }
                                                             } catch(e) {}
@@ -744,17 +820,56 @@ fun CasinoWebLoginDialog(
                                     .background(if (isVerifyingSession) RaptechColors.SurfaceLight else RaptechColors.OrangePrimary)
                                     .clickable(enabled = !isVerifyingSession) {
                                         if (platform == CasinoPlatform.BETFURY) {
-                                            webViewRef?.evaluateJavascript(
-                                                "(function() { try { var t = localStorage.getItem('token') || localStorage.getItem('auth_token'); var u = localStorage.getItem('uid') || localStorage.getItem('userId'); return t ? (u ? t+';uid='+u : t) : ''; } catch(e){return '';} })()"
-                                            ) { res ->
-                                                val clean = res?.trim('"', '\'')?.replace("\\\"", "\"") ?: ""
-                                                if (clean.isNotBlank() && clean != "null") {
-                                                    verifyAndConnectSession(clean)
+                                            val extractScript = """
+                                                (function() {
+                                                    try {
+                                                        var token = '';
+                                                        var uid = '';
+                                                        var directKeys = ['token', 'auth_token', 'jwt', 'bf_token', 'accessToken', 'session_token'];
+                                                        for (var i = 0; i < directKeys.length; i++) {
+                                                            var v = window.localStorage.getItem(directKeys[i]);
+                                                            if (v && v.length > 10) { token = v.replace(/^"|"$/g, ''); break; }
+                                                        }
+                                                        if (!token) {
+                                                            for (var j = 0; j < window.localStorage.length; j++) {
+                                                                var k = window.localStorage.key(j);
+                                                                var val = window.localStorage.getItem(k);
+                                                                if (val && val.indexOf('eyJ') !== -1) {
+                                                                    var m = val.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+                                                                    if (m) { token = m[0]; break; }
+                                                                }
+                                                            }
+                                                        }
+                                                        if (!token && window.sessionStorage) {
+                                                            for (var s = 0; s < window.sessionStorage.length; s++) {
+                                                                var sk = window.sessionStorage.key(s);
+                                                                var sv = window.sessionStorage.getItem(sk);
+                                                                if (sv && sv.indexOf('eyJ') !== -1) {
+                                                                    var sm = sv.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+                                                                    if (sm) { token = sm[0]; break; }
+                                                                }
+                                                            }
+                                                        }
+                                                        var uKeys = ['uid', 'userId', 'user_id', 'id'];
+                                                        for (var u = 0; u < uKeys.length; u++) {
+                                                            var uv = window.localStorage.getItem(uKeys[u]);
+                                                            if (uv) { uid = uv.replace(/^"|"$/g, ''); break; }
+                                                        }
+                                                        return token ? (uid ? (token + ';uid=' + uid) : token) : '';
+                                                    } catch(e) { return ''; }
+                                                })()
+                                            """.trimIndent()
+
+                                            webViewRef?.evaluateJavascript(extractScript) { res ->
+                                                val cleanToken = res?.trim('"', '\'')?.replace("\\\"", "\"")?.trim() ?: ""
+                                                val cookieManager = CookieManager.getInstance()
+                                                val currentCookies = cookieManager.getCookie(currentUrlDisplay) ?: cookieManager.getCookie(platform.defaultLoginUrl) ?: ""
+                                                val finalSession = if (cleanToken.isNotBlank() && cleanToken != "null") {
+                                                    if (currentCookies.isNotBlank()) "$cleanToken;cookies=$currentCookies" else cleanToken
                                                 } else {
-                                                    val cookieManager = CookieManager.getInstance()
-                                                    val currentCookies = cookieManager.getCookie(currentUrlDisplay) ?: cookieManager.getCookie(platform.defaultLoginUrl) ?: ""
-                                                    verifyAndConnectSession(currentCookies)
+                                                    currentCookies
                                                 }
+                                                verifyAndConnectSession(finalSession)
                                             }
                                         } else {
                                             val cookieManager = CookieManager.getInstance()
@@ -840,7 +955,11 @@ fun CasinoWebLoginDialog(
                                 .padding(10.dp)
                         ) {
                             Text(
-                                text = "Format Cookie ${platform.displayName}:\nuser_session=abc123...; csrf_cookie_name=xyz789...\n\nAnda dapat menyalin cookie dari Chrome DevTools (Application > Cookies) saat login di browser.",
+                                text = if (platform == CasinoPlatform.BETFURY) {
+                                    "Format Kredensial ${platform.displayName}:\n- JWT Token: eyJhbGciOi...\n- Atau Cookie: token=eyJ...; uid=123...\n\nAnda dapat menyalin token dari Application > Local Storage > token atau dari Cookies di browser."
+                                } else {
+                                    "Format Cookie ${platform.displayName}:\nuser_session=abc123...; csrf_cookie_name=xyz789...\n\nAnda dapat menyalin cookie dari Chrome DevTools (Application > Cookies) saat login di browser."
+                                },
                                 color = RaptechColors.OrangePrimary,
                                 fontSize = 11.sp,
                                 lineHeight = 16.sp
@@ -850,7 +969,7 @@ fun CasinoWebLoginDialog(
                         // Input Box
                         Column {
                             Text(
-                                text = "String Cookie / Sesi Akun:",
+                                text = if (platform == CasinoPlatform.BETFURY) "Token JWT / Cookie Betfury:" else "String Cookie / Sesi Akun:",
                                 color = RaptechColors.TextPrimary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -867,7 +986,7 @@ fun CasinoWebLoginDialog(
                             ) {
                                 if (manualTokenInput.isEmpty()) {
                                     Text(
-                                        text = "Tempel string cookie sesi di sini...",
+                                        text = if (platform == CasinoPlatform.BETFURY) "Tempel token JWT (eyJ...) atau cookie sesi di sini..." else "Tempel string cookie sesi di sini...",
                                         color = RaptechColors.TextMuted,
                                         fontSize = 11.sp
                                     )

@@ -37,34 +37,51 @@ class BetfuryAdapter(
             var token = ""
             var uid = ""
 
-            if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-                val tokenRegex = Regex("""["']?(?:token|auth_token|jwt)["']?\s*:\s*["']([^"']+)["']""")
+            // 1. Check for JWT pattern anywhere (starts with eyJ... with 2 or 3 segments)
+            val jwtRegex = Regex("""eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]+""")
+            val jwtMatch = jwtRegex.find(trimmed)
+            if (jwtMatch != null) {
+                token = jwtMatch.value.trim()
+            }
+
+            // 2. If not found via regex, check JSON object
+            if (token.isBlank() && trimmed.startsWith("{") && trimmed.endsWith("}")) {
+                val tokenRegex = Regex("""["']?(?:token|auth_token|jwt|accessToken|session_token)["']?\s*:\s*["']([^"']+)["']""")
                 val uidRegex = Regex("""["']?(?:uid|userId|user_id)["']?\s*:\s*["']([^"']+)["']""")
                 tokenRegex.find(trimmed)?.groupValues?.get(1)?.let { token = it.trim() }
                 uidRegex.find(trimmed)?.groupValues?.get(1)?.let { uid = it.trim() }
             }
 
-            if (token.isBlank() && trimmed.contains(";")) {
+            // 3. Check delimited key-value pairs (cookies or query style)
+            if (trimmed.contains("=") || trimmed.contains(";")) {
                 val parts = trimmed.split(";")
-                token = parts[0].trim()
-                for (p in parts.drop(1)) {
-                    if (p.contains("=")) {
-                        val kv = p.split("=", limit = 2)
-                        if (kv[0].trim().equals("uid", ignoreCase = true)) {
-                            uid = kv[1].trim().trim('"', '\'')
+                for (p in parts) {
+                    val trimmedPart = p.trim()
+                    if (trimmedPart.contains("=")) {
+                        val kv = trimmedPart.split("=", limit = 2)
+                        val key = kv[0].trim().lowercase(Locale.ROOT)
+                        val value = kv[1].trim().trim('"', '\'')
+                        if (token.isBlank() && (key == "token" || key == "auth_token" || key == "bf_token" || key == "jwt" || key == "accesstoken")) {
+                            token = value
                         }
+                        if (uid.isBlank() && (key == "uid" || key == "userid" || key == "user_id")) {
+                            uid = value
+                        }
+                    } else if (token.isBlank() && trimmedPart.isNotBlank()) {
+                        token = trimmedPart
                     }
                 }
             }
 
-            if (token.isBlank()) {
+            // 4. Fallback: single raw string
+            if (token.isBlank() && !trimmed.contains(";") && !trimmed.contains("=")) {
                 token = trimmed
             }
 
             token = token.removePrefix("Bearer ").trim()
             uid = uid.removePrefix("uid=").trim()
 
-            // If uid is empty, attempt to extract userId from JWT payload
+            // 5. If uid is still empty, attempt to extract userId from JWT payload
             if (uid.isBlank() && token.contains(".")) {
                 uid = extractUidFromJwt(token)
             }
@@ -142,11 +159,19 @@ class BetfuryAdapter(
 
             val ts = System.currentTimeMillis()
             val pollUrl = "$BASE_URL/socket.io/?mobile=false&EIO=4&transport=polling&t=$ts"
-            val pollRequest = Request.Builder()
+            val pollReqBuilder = Request.Builder()
                 .url(pollUrl)
                 .header("User-Agent", CasinoHttpClient.currentUserAgent)
                 .header("Origin", BASE_URL)
-                .build()
+
+            if (pureToken.isNotBlank()) {
+                pollReqBuilder.header("Authorization", "Bearer $pureToken")
+            }
+            if (rawCredential.contains("=")) {
+                pollReqBuilder.header("Cookie", rawCredential)
+            }
+
+            val pollRequest = pollReqBuilder.build()
 
             val pollResp = client.newCall(pollRequest).execute().use { response ->
                 if (!response.isSuccessful) {
@@ -166,11 +191,19 @@ class BetfuryAdapter(
             }
 
             val wsUrl = "$BASE_WS/socket.io/?mobile=false&EIO=4&transport=websocket&sid=$sid"
-            val wsRequest = Request.Builder()
+            val wsReqBuilder = Request.Builder()
                 .url(wsUrl)
                 .header("User-Agent", CasinoHttpClient.currentUserAgent)
                 .header("Origin", BASE_URL)
-                .build()
+
+            if (pureToken.isNotBlank()) {
+                wsReqBuilder.header("Authorization", "Bearer $pureToken")
+            }
+            if (rawCredential.contains("=")) {
+                wsReqBuilder.header("Cookie", rawCredential)
+            }
+
+            val wsRequest = wsReqBuilder.build()
 
             val deferred = CompletableDeferred<Boolean>()
             authDeferred = deferred
@@ -254,9 +287,11 @@ class BetfuryAdapter(
             return
         }
 
-        // 5. Socket.IO Event: 42[eventName, payload]
+        // 5. Socket.IO Event: 42{ackId}[eventName, payload] or 42[eventName, payload]
         if (msg.startsWith("42")) {
-            val eventPayload = msg.substring(2)
+            var jsonStart = 2
+            while (jsonStart < msg.length && msg[jsonStart].isDigit()) jsonStart++
+            val eventPayload = msg.substring(jsonStart)
             try {
                 val array = JSONArray(eventPayload)
                 if (array.length() >= 2) {
@@ -267,6 +302,12 @@ class BetfuryAdapter(
                         eventName.equals("user", ignoreCase = true)) {
                         if (data is JSONObject) {
                             processCurrenciesData(data)
+                            isConnected = true
+                            isAuthed = true
+                            authDeferred?.complete(true)
+                            ackCallbacks.forEach { (_, def) ->
+                                if (!def.isCompleted) def.complete(data.toString())
+                            }
                         }
                     }
                 }
@@ -295,16 +336,28 @@ class BetfuryAdapter(
                 if (result.contains("token_error", ignoreCase = true)) {
                     authDeferred?.completeExceptionally(IllegalStateException("Token Betfury ditolak."))
                 } else {
-                    val array = JSONArray(result)
-                    if (array.length() > 0 && array.opt(0) is JSONObject) {
-                        processCurrenciesData(array.getJSONObject(0))
+                    try {
+                        val array = JSONArray(result)
+                        if (array.length() > 0 && array.opt(0) is JSONObject) {
+                            processCurrenciesData(array.getJSONObject(0))
+                        }
+                    } catch (_: Exception) {
+                        try {
+                            val obj = JSONObject(result)
+                            processCurrenciesData(obj)
+                        } catch (_: Exception) {}
                     }
                     isConnected = true
                     isAuthed = true
                     authDeferred?.complete(true)
                 }
             } catch (e: Exception) {
-                authDeferred?.completeExceptionally(e)
+                if (isAuthed || cachedBalances.isNotEmpty()) {
+                    Log.d(TAG, "Auth ack timed out but session already authenticated via event 42.")
+                    authDeferred?.complete(true)
+                } else {
+                    authDeferred?.completeExceptionally(e)
+                }
             }
         }
     }
