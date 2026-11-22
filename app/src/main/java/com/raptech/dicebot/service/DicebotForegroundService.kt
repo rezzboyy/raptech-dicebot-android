@@ -449,7 +449,11 @@ class DicebotForegroundService : Service() {
                 selectedPlatform = platform,
                 selectedCurrency = platform.defaultCurrency,
                 isPlatformAuthenticated = isAuth,
-                availableCoins = emptyList()
+                availableCoins = emptyList(),
+                balance = 0.0,
+                initialBalance = 0.0,
+                minBalance = 0.0,
+                maxBalance = 0.0
             )
         }
         addLiveLog("🌐 Platform berganti ke ${platform.displayName} (${platform.defaultCurrency})${if (isAuth) " [Tersimpan Sesi]" else " [Belum Login]"}", isError = false)
@@ -465,7 +469,15 @@ class DicebotForegroundService : Service() {
 
     fun logoutPlatform(platform: CasinoPlatform) {
         casinoRepository.clearToken(platform)
-        _uiState.update { it.copy(isPlatformAuthenticated = !platform.isDirectApi) }
+        _uiState.update {
+            it.copy(
+                isPlatformAuthenticated = !platform.isDirectApi,
+                balance = 0.0,
+                initialBalance = 0.0,
+                minBalance = 0.0,
+                maxBalance = 0.0
+            )
+        }
         addLiveLog("🚪 Sesi login ${platform.displayName} telah dihapus / logout.", isError = false)
     }
 
@@ -499,12 +511,29 @@ class DicebotForegroundService : Service() {
             val res = casinoRepository.fetchBalance(_uiState.value.selectedPlatform, _uiState.value.selectedCurrency)
             if (res.isSuccess) {
                 val bal = res.getOrThrow()
-                _uiState.update { it.copy(balance = bal, isPlatformAuthenticated = true, statusMessage = "Saldo: $bal ${it.selectedCurrency}") }
+                _uiState.update {
+                    it.copy(
+                        balance = bal,
+                        initialBalance = if (it.executions == 0L) bal else it.initialBalance,
+                        minBalance = if (it.executions == 0L) bal else minOf(it.minBalance, bal),
+                        maxBalance = if (it.executions == 0L) bal else maxOf(it.maxBalance, bal),
+                        isPlatformAuthenticated = true,
+                        statusMessage = "Saldo: $bal ${it.selectedCurrency}"
+                    )
+                }
                 addLiveLog("💰 Saldo ${_uiState.value.selectedPlatform.displayName}: $bal ${_uiState.value.selectedCurrency}", isError = false)
             } else {
                 val errMsg = res.exceptionOrNull()?.message ?: "Gagal terhubung"
                 if (errMsg.contains("belum login") || errMsg.contains("dialihkan ke login") || errMsg.contains("terakhir") || errMsg.contains("belum diatur")) {
-                    _uiState.update { it.copy(isPlatformAuthenticated = false) }
+                    _uiState.update {
+                        it.copy(
+                            isPlatformAuthenticated = false,
+                            balance = 0.0,
+                            initialBalance = 0.0,
+                            minBalance = 0.0,
+                            maxBalance = 0.0
+                        )
+                    }
                 }
                 addLiveLog("⚠ Gagal refresh saldo: $errMsg", isError = true)
             }
@@ -548,6 +577,9 @@ class DicebotForegroundService : Service() {
                         availableCoins = coins,
                         selectedCurrency = currentCurr,
                         balance = currentBal,
+                        initialBalance = if (it.executions == 0L) currentBal else it.initialBalance,
+                        minBalance = if (it.executions == 0L) currentBal else minOf(it.minBalance, currentBal),
+                        maxBalance = if (it.executions == 0L) currentBal else maxOf(it.maxBalance, currentBal),
                         isDetectingCoins = false,
                         statusMessage = "Koin: $currentCurr ($currentBal)"
                     )

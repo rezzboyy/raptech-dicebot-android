@@ -141,17 +141,17 @@ fun HistoryTable(
                     .padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("#", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.35f).padding(start = 4.dp))
+                Text("#", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.35f).padding(horizontal = 2.dp))
                 GridCellDivider()
-                Text("Amount", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1.25f).padding(start = 4.dp))
+                Text("Amount", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.15f).padding(horizontal = 2.dp))
                 GridCellDivider()
-                Text("Cond", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.75f).padding(start = 4.dp))
+                Text("Cond", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.70f).padding(horizontal = 2.dp))
                 GridCellDivider()
-                Text("Roll", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.65f).padding(start = 4.dp))
+                Text("Roll", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.55f).padding(horizontal = 2.dp))
                 GridCellDivider()
-                Text("Profit", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1.25f).padding(start = 4.dp))
+                Text("Profit", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.15f).padding(horizontal = 2.dp))
                 GridCellDivider()
-                Text("Nonce", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.45f).padding(start = 4.dp))
+                Text("Nonce", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.70f).padding(horizontal = 2.dp))
             }
 
             // Divider Pemisah Header & Data
@@ -197,63 +197,75 @@ fun HistoryTable(
                                 // 1. Roll #
                                 Text(
                                     text = "${item.executionNumber}",
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontFamily = FontFamily.Monospace,
                                     color = Color(0xFF0F172A),
-                                    modifier = Modifier.weight(0.35f).padding(start = 4.dp)
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(0.35f).padding(horizontal = 2.dp)
                                 )
                                 GridCellDivider()
 
                                 // 2. Amount
                                 Text(
                                     text = String.format(Locale.US, "%.8f", item.amount),
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF0F172A),
-                                    modifier = Modifier.weight(1.25f).padding(start = 4.dp)
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1.15f).padding(horizontal = 2.dp)
                                 )
                                 GridCellDivider()
 
                                 // 3. Condition
                                 Text(
                                     text = condStr,
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontFamily = FontFamily.Monospace,
                                     color = Color(0xFF334155),
-                                    modifier = Modifier.weight(0.75f).padding(start = 4.dp)
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(0.70f).padding(horizontal = 2.dp)
                                 )
                                 GridCellDivider()
 
                                 // 4. Roll Result
                                 Text(
                                     text = String.format(Locale.US, "%.2f", item.rollResult),
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF0F172A),
-                                    modifier = Modifier.weight(0.65f).padding(start = 4.dp)
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(0.55f).padding(horizontal = 2.dp)
                                 )
                                 GridCellDivider()
 
                                 // 5. Profit
                                 Text(
                                     text = String.format(Locale.US, "%+.8f", item.netResult),
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
                                     color = profitColor,
-                                    modifier = Modifier.weight(1.25f).padding(start = 4.dp)
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1.15f).padding(horizontal = 2.dp)
                                 )
                                 GridCellDivider()
 
                                 // 6. Nonce
                                 Text(
                                     text = "${item.nonce}",
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontFamily = FontFamily.Monospace,
                                     color = Color(0xFF334155),
-                                    modifier = Modifier.weight(0.45f).padding(start = 4.dp)
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(0.70f).padding(horizontal = 2.dp)
                                 )
                             }
 
