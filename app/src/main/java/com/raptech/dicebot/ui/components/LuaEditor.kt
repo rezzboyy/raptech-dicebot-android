@@ -1,5 +1,8 @@
 package com.raptech.dicebot.ui.components
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,10 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -42,8 +44,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.raptech.dicebot.engine.LuaEngine
-import com.raptech.dicebot.model.StrategyPreset
-import com.raptech.dicebot.model.StrategyPresets
 import com.raptech.dicebot.model.SyntaxValidationResult
 import com.raptech.dicebot.ui.theme.RaptechColors
 
@@ -51,15 +51,30 @@ import com.raptech.dicebot.ui.theme.RaptechColors
 fun LuaEditor(
     script: String,
     onScriptChange: (String) -> Unit,
-    onPresetSelected: (StrategyPreset) -> Unit,
     syntaxResult: SyntaxValidationResult?,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var draftStatus by remember { mutableStateOf("Draft autosaved") }
-    var presetMenuExpanded by remember { mutableStateOf(false) }
     var showVariablesDialog by remember { mutableStateOf(false) }
     val lineCount = script.lines().size
     val charCount = script.length
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val content = inputStream.bufferedReader().use { it.readText() }
+                    onScriptChange(content)
+                    draftStatus = "Script dimuat dari file ✓"
+                }
+            } catch (e: Exception) {
+                draftStatus = "Gagal memuat file: ${e.message}"
+            }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -69,7 +84,7 @@ fun LuaEditor(
             .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(8.dp))
             .padding(8.dp)
     ) {
-        // Row 1: Presets Dropdown, Dedicated Variables Menu Button & Action Buttons
+        // Row 1: Choose File Button, Dedicated Variables Menu Button & Action Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -79,62 +94,31 @@ fun LuaEditor(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Presets Dropdown
-                Box {
+                // Choose File Button
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(RaptechColors.OrangePrimary)
+                        .clickable { filePickerLauncher.launch(arrayOf("*/*")) }
+                        .padding(horizontal = 9.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(RaptechColors.OrangePrimary)
-                            .clickable { presetMenuExpanded = true }
-                            .padding(horizontal = 9.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.FolderOpen,
+                            contentDescription = "Choose File",
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
+                        )
                         Text(
-                            text = "Presets",
+                            text = "Choose File",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = presetMenuExpanded,
-                        onDismissRequest = { presetMenuExpanded = false },
-                        modifier = Modifier
-                            .background(RaptechColors.SurfaceWhite)
-                            .border(1.dp, RaptechColors.BorderSubtle)
-                    ) {
-                        StrategyPresets.ALL_PRESETS.forEach { preset ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(
-                                            text = preset.name,
-                                            color = RaptechColors.OrangePrimary,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = "${preset.category} • ${preset.description}",
-                                            color = RaptechColors.TextSecondary,
-                                            fontSize = 10.sp
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    onPresetSelected(preset)
-                                    presetMenuExpanded = false
-                                    draftStatus = "Preset '${preset.name}' dimuat"
-                                }
-                            )
-                        }
                     }
                 }
 

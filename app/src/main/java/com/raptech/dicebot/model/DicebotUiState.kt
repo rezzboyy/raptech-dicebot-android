@@ -1,5 +1,18 @@
 package com.raptech.dicebot.model
 
+const val DEFAULT_SAMPLE_SCRIPT = """chance = 49.5
+bethigh = true
+basebet = 0.00000001
+nextbet = basebet
+
+function dobet()
+  if win then
+    nextbet = basebet
+  else
+    nextbet = previousbet * 2
+  end
+end"""
+
 data class DicebotUiState(
     val isRunning: Boolean = false,
     val isPaused: Boolean = false,
@@ -29,7 +42,7 @@ data class DicebotUiState(
     val history: List<BetRecord> = emptyList(),
     val chartPoints: List<ChartPoint> = emptyList(),
     val liveLogs: List<LuaLogEntry> = emptyList(),
-    val luaScript: String = StrategyPresets.RAPTECH_PICKIO_PRO.script,
+    val luaScript: String = DEFAULT_SAMPLE_SCRIPT,
     val scriptLanguage: ScriptLanguage = ScriptLanguage.LUA,
     val scriptName: String = "Editor LUA",
     val statusMessage: String = "Ready",
@@ -45,3 +58,4 @@ data class DicebotUiState(
     val currentTrend: Int
         get() = currentStreak
 }
+

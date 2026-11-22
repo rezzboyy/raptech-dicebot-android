@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.raptech.dicebot.model.CasinoPlatform
 import com.raptech.dicebot.model.DicebotUiState
-import com.raptech.dicebot.model.StrategyPreset
 import com.raptech.dicebot.ui.components.BatteryOptimizationDialog
 import com.raptech.dicebot.ui.components.CasinoWebLoginDialog
 import com.raptech.dicebot.ui.components.CoinSelectorDialog
@@ -62,7 +61,6 @@ fun DicebotMainScreen(
     onToggleStopOnWin: () -> Unit,
     onPlatformSelected: (CasinoPlatform) -> Unit,
     onScriptChanged: (String) -> Unit,
-    onPresetSelected: (StrategyPreset) -> Unit,
     onSessionCaptured: (String) -> Unit,
     onLogout: () -> Unit,
     onSaveRiskLimits: (stopLoss: Double?, takeProfit: Double?, maxBet: Double?) -> Unit,
@@ -167,7 +165,6 @@ fun DicebotMainScreen(
                             0 -> LuaEditor(
                                 script = state.luaScript,
                                 onScriptChange = onScriptChanged,
-                                onPresetSelected = onPresetSelected,
                                 syntaxResult = state.syntaxValidation,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -277,7 +274,6 @@ fun DicebotMainScreen(
                             LuaEditor(
                                 script = state.luaScript,
                                 onScriptChange = onScriptChanged,
-                                onPresetSelected = onPresetSelected,
                                 syntaxResult = state.syntaxValidation,
                                 modifier = Modifier.fillMaxSize()
                             )

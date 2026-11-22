@@ -166,9 +166,6 @@ class MainActivity : ComponentActivity() {
                             onScriptChanged = { script ->
                                 botService?.updateScript(script)
                             },
-                            onPresetSelected = { preset ->
-                                botService?.loadPreset(preset)
-                            },
                             onSessionCaptured = { token ->
                                 botService?.savePlatformToken(state.selectedPlatform, token)
                             },
