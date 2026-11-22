@@ -6,19 +6,24 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Icon
@@ -44,6 +49,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.raptech.dicebot.engine.LuaEngine
+import com.raptech.dicebot.engine.LuaScriptAutoFixer
 import com.raptech.dicebot.model.SyntaxValidationResult
 import com.raptech.dicebot.ui.theme.RaptechColors
 
@@ -55,6 +61,8 @@ fun LuaEditor(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val verticalScrollState = rememberScrollState()
+    val horizontalScrollState = rememberScrollState()
     var draftStatus by remember { mutableStateOf("Draft autosaved") }
     var showVariablesDialog by remember { mutableStateOf(false) }
     val lineCount = script.lines().size
@@ -84,15 +92,16 @@ fun LuaEditor(
             .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(8.dp))
             .padding(8.dp)
     ) {
-        // Row 1: Choose File Button, Dedicated Variables Menu Button & Action Buttons
+        // Row 1: Choose File & FX on Left, AutoFix in Center, Check & Clear on Right
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Left: Choose File & FX / Variabel
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Choose File Button
                 Box(
@@ -100,22 +109,22 @@ fun LuaEditor(
                         .clip(RoundedCornerShape(5.dp))
                         .background(RaptechColors.OrangePrimary)
                         .clickable { filePickerLauncher.launch(arrayOf("*/*")) }
-                        .padding(horizontal = 9.dp, vertical = 5.dp),
+                        .padding(horizontal = 7.dp, vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.FolderOpen,
                             contentDescription = "Choose File",
                             tint = Color.White,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = "Choose File",
-                            fontSize = 11.sp,
+                            fontSize = 10.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -129,23 +138,61 @@ fun LuaEditor(
                         .background(RaptechColors.OrangeSoft)
                         .border(1.dp, RaptechColors.OrangeBorder, RoundedCornerShape(5.dp))
                         .clickable { showVariablesDialog = true }
-                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                        .padding(horizontal = 6.dp, vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "FX / Variabel",
-                        fontSize = 11.sp,
+                        fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = RaptechColors.OrangePrimary
                     )
                 }
             }
 
-            // Quick Actions: Check, Clear
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Center: AutoFix Button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Color(0xFFECFDF5))
+                    .border(1.dp, Color(0xFF10B981), RoundedCornerShape(5.dp))
+                    .clickable {
+                        val fixRes = LuaScriptAutoFixer.fix(script)
+                        if (fixRes.fixedScript != script) {
+                            onScriptChange(fixRes.fixedScript)
+                        }
+                        draftStatus = fixRes.summaryMessage
+                    }
+                    .padding(horizontal = 7.dp, vertical = 5.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoFixHigh,
+                        contentDescription = "AutoFix",
+                        tint = Color(0xFF059669),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = "AutoFix",
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF047857)
+                    )
+                }
+            }
+
+            // Right: Quick Actions Check & Clear
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 EditorActionButton("Cek Sintaks", RaptechColors.SurfaceLight, RaptechColors.TextPrimary) {
                     val res = LuaEngine.validateSyntax(script)
-                    draftStatus = if (res.isValid) "Sintaks LUA Valid ✓" else "Error baris ${res.errorLine ?: "?"}"
+                    draftStatus = if (res.isValid) "Sintaks LUA Valid ✓" else "Error baris ${res.errorLine ?: "?"}: ${res.errorMessage}"
                 }
                 EditorActionButton("Clear", RaptechColors.LossBackground, RaptechColors.LossDanger) {
                     onScriptChange("")
@@ -185,7 +232,7 @@ fun LuaEditor(
             Spacer(modifier = Modifier.height(6.dp))
         }
 
-        // Code Editor Box with Line Numbers
+        // Code Editor Box with Synchronized Line Numbers
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -193,6 +240,7 @@ fun LuaEditor(
                 .clip(RoundedCornerShape(6.dp))
                 .background(RaptechColors.SurfaceLight)
                 .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(6.dp))
+                .verticalScroll(verticalScrollState)
                 .padding(6.dp)
         ) {
             // Line Numbers Column
@@ -208,23 +256,29 @@ fun LuaEditor(
                     .padding(end = 4.dp)
             )
 
-            // Text Area
-            BasicTextField(
-                value = script,
-                onValueChange = {
-                    onScriptChange(it)
-                    draftStatus = "Draft autosaved"
-                },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = remember { LuaSyntaxTransformation() },
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    color = RaptechColors.TextCode,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
-                    lineHeight = 16.sp
-                ),
-                cursorBrush = SolidColor(RaptechColors.OrangePrimary)
-            )
+            // Code Text Area
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(horizontalScrollState)
+            ) {
+                BasicTextField(
+                    value = script,
+                    onValueChange = {
+                        onScriptChange(it)
+                        draftStatus = "Draft autosaved"
+                    },
+                    modifier = Modifier.defaultMinSize(minWidth = 320.dp),
+                    visualTransformation = remember { LuaSyntaxTransformation() },
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = RaptechColors.TextCode,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 16.sp
+                    ),
+                    cursorBrush = SolidColor(RaptechColors.OrangePrimary)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))

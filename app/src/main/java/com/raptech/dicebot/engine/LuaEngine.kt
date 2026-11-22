@@ -68,6 +68,8 @@ class LuaEngine(
                 SyntaxValidationResult(isValid = false, errorMessage = t.message ?: "Error kompilasi")
             }
         }
+
+        fun autoFix(script: String): AutoFixResult = LuaScriptAutoFixer.fix(script)
     }
 
     fun initScript(
