@@ -71,6 +71,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.raptech.dicebot.data.adapter.BetfuryAdapter
+import com.raptech.dicebot.data.adapter.CasinoPlatformAdapter
 import com.raptech.dicebot.data.adapter.PickIoAdapter
 import com.raptech.dicebot.model.CasinoPlatform
 import com.raptech.dicebot.ui.theme.RaptechColors
@@ -214,7 +216,11 @@ fun CasinoWebLoginDialog(
         verificationStatusMessage = "Memverifikasi sesi dengan ${platform.displayName}..."
 
         coroutineScope.launch {
-            val testAdapter = PickIoAdapter(platform, clean)
+            val testAdapter: CasinoPlatformAdapter = if (platform == CasinoPlatform.BETFURY) {
+                BetfuryAdapter(clean)
+            } else {
+                PickIoAdapter(platform, clean)
+            }
             val balanceRes = testAdapter.fetchBalance(platform.defaultCurrency)
 
             withContext(Dispatchers.Main) {
@@ -607,6 +613,22 @@ fun CasinoWebLoginDialog(
                                                     """.trimIndent()
                                                     view?.evaluateJavascript(loggedInCheckScript, null)
                                                 }
+
+                                                if (platform == CasinoPlatform.BETFURY) {
+                                                    val betfuryCheckScript = """
+                                                        (function() {
+                                                            try {
+                                                                var t = window.localStorage.getItem('token') || window.localStorage.getItem('auth_token');
+                                                                var u = window.localStorage.getItem('uid') || window.localStorage.getItem('userId');
+                                                                if (t && window.DicebotBridge) {
+                                                                    var cred = u ? (t + ';uid=' + u) : t;
+                                                                    window.DicebotBridge.onAuthSuccess(cred);
+                                                                }
+                                                            } catch(e) {}
+                                                        })();
+                                                    """.trimIndent()
+                                                    view?.evaluateJavascript(betfuryCheckScript, null)
+                                                }
                                             }
 
                                             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -721,9 +743,24 @@ fun CasinoWebLoginDialog(
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(if (isVerifyingSession) RaptechColors.SurfaceLight else RaptechColors.OrangePrimary)
                                     .clickable(enabled = !isVerifyingSession) {
-                                        val cookieManager = CookieManager.getInstance()
-                                        val currentCookies = cookieManager.getCookie(currentUrlDisplay) ?: cookieManager.getCookie(platform.defaultLoginUrl) ?: ""
-                                        verifyAndConnectSession(currentCookies)
+                                        if (platform == CasinoPlatform.BETFURY) {
+                                            webViewRef?.evaluateJavascript(
+                                                "(function() { try { var t = localStorage.getItem('token') || localStorage.getItem('auth_token'); var u = localStorage.getItem('uid') || localStorage.getItem('userId'); return t ? (u ? t+';uid='+u : t) : ''; } catch(e){return '';} })()"
+                                            ) { res ->
+                                                val clean = res?.trim('"', '\'')?.replace("\\\"", "\"") ?: ""
+                                                if (clean.isNotBlank() && clean != "null") {
+                                                    verifyAndConnectSession(clean)
+                                                } else {
+                                                    val cookieManager = CookieManager.getInstance()
+                                                    val currentCookies = cookieManager.getCookie(currentUrlDisplay) ?: cookieManager.getCookie(platform.defaultLoginUrl) ?: ""
+                                                    verifyAndConnectSession(currentCookies)
+                                                }
+                                            }
+                                        } else {
+                                            val cookieManager = CookieManager.getInstance()
+                                            val currentCookies = cookieManager.getCookie(currentUrlDisplay) ?: cookieManager.getCookie(platform.defaultLoginUrl) ?: ""
+                                            verifyAndConnectSession(currentCookies)
+                                        }
                                     }
                                     .padding(vertical = 10.dp),
                                 contentAlignment = Alignment.Center
@@ -876,7 +913,11 @@ fun CasinoWebLoginDialog(
                                     manualStatusMessage = "Menguji koneksi ke ${platform.displayName}..."
 
                                     coroutineScope.launch {
-                                        val testAdapter = PickIoAdapter(platform, clean)
+                                        val testAdapter: CasinoPlatformAdapter = if (platform == CasinoPlatform.BETFURY) {
+                                            BetfuryAdapter(clean)
+                                        } else {
+                                            PickIoAdapter(platform, clean)
+                                        }
                                         val balRes = testAdapter.fetchBalance(platform.defaultCurrency)
 
                                         withContext(Dispatchers.Main) {

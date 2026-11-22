@@ -1,5 +1,6 @@
 package com.raptech.dicebot
 
+import com.raptech.dicebot.data.adapter.BetfuryAdapter
 import com.raptech.dicebot.data.adapter.PickIoAdapter
 import com.raptech.dicebot.data.adapter.SimulatorAdapter
 import com.raptech.dicebot.engine.LuaEngine
@@ -227,5 +228,38 @@ class AuthAndPlatformAdapterTest {
 
         assertEquals(1, seedResetCount)
         assertEquals(1, statsResetCount)
+    }
+
+    @Test
+    fun testBetfuryPlatformConfig() {
+        assertEquals("https://betfury.com", CasinoPlatform.BETFURY.defaultLoginUrl)
+        assertEquals("Betfury.com", CasinoPlatform.BETFURY.displayName)
+        assertEquals("BFG", CasinoPlatform.BETFURY.defaultCurrency)
+        assertTrue(CasinoPlatform.BETFURY.isDirectApi)
+        assertTrue(CasinoPlatform.BETFURY.supportedCoins.contains("BFG"))
+        assertTrue(CasinoPlatform.BETFURY.supportedCoins.contains("USDT"))
+        assertTrue(CasinoPlatform.BETFURY.supportedCoins.contains("BTC"))
+        assertTrue(CasinoPlatform.BETFURY.supportedCoins.contains("TRX"))
+    }
+
+    @Test
+    fun testBetfuryCredentialsParsing() {
+        val raw1 = "eyJhbGciOiJIUzI1NiJ9.test;uid=123456_abcdef"
+        val (token1, uid1, fp1) = BetfuryAdapter.parseCredentials(raw1)
+        assertEquals("eyJhbGciOiJIUzI1NiJ9.test", token1)
+        assertEquals("123456_abcdef", uid1)
+        assertEquals("123456", fp1)
+
+        val rawJson = """{"token": "jwt_token_999", "uid": "user_777_xyz"}"""
+        val (token2, uid2, fp2) = BetfuryAdapter.parseCredentials(rawJson)
+        assertEquals("jwt_token_999", token2)
+        assertEquals("user_777_xyz", uid2)
+        assertEquals("user", fp2)
+
+        val rawDirect = "my_custom_pure_token_xyz"
+        val (token3, uid3, fp3) = BetfuryAdapter.parseCredentials(rawDirect)
+        assertEquals("my_custom_pure_token_xyz", token3)
+        assertEquals("", uid3)
+        assertEquals("", fp3)
     }
 }

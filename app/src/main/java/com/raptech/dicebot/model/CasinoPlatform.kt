@@ -120,6 +120,18 @@ enum class CasinoPlatform(
         decimalPrecision = 8,
         minBet = 0.0001
     ),
+    BETFURY(
+        displayName = "Betfury.com",
+        defaultCurrency = "BFG",
+        isDirectApi = true,
+        defaultLoginUrl = "https://betfury.com",
+        supportedCoins = listOf(
+            "BFG", "USDT", "TRX", "BTC", "ETH", "BNB", "DOGE", "LTC", "SOL", "XRP", "MATIC", "BCH", "SHIB"
+        ),
+        unitDivisor = 100_000_000.0,
+        decimalPrecision = 8,
+        minBet = 0.00000001
+    ),
     SIMULATOR(
         displayName = "Simulation (Pick.io)",
         defaultCurrency = "TRX",

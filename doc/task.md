@@ -203,6 +203,29 @@ Fokus aktif saat ini adalah transformasi menyeluruh antarmuka menuju tema **Soli
 
 ---
 
+### Track 7: Integrasi Situs Betfury.com & Engine Multi-Currency Socket.IO (Status: SELESAI & TERTUTUP ✓)
+- [x] **7.1 Registrasi Platform `BETFURY` (`CasinoPlatform.kt`)**:
+  - Penambahan enum `BETFURY` dengan display name `"Betfury.com"`, koin default `BFG`, dan login URL `https://betfury.com`.
+  - Daftar koin terdukung: `BFG, USDT, TRX, BTC, ETH, BNB, DOGE, LTC, SOL, XRP, MATIC, BCH, SHIB`.
+- [x] **7.2 Pembuatan Engine `BetfuryAdapter.kt`**:
+  - Implementasi Socket.IO v4 Engine.IO protocol via native OkHttp WebSocket.
+  - Auto-detection multi-currency wallet: menangkap respon `profile.token` dan mengekstrak seluruh saldo koin user ke dalam `List<CoinBalance>` secara instan.
+  - Fitur ganti koin dinamis via `auth.changeCurrency`.
+  - Eksekusi taruhan dadu latensi rendah via event `games.dice.bet` (dengan auto-retry saat butuh `games.dice.join`).
+  - Rotasi client seed via `games.dice.seed.change`.
+- [x] **7.3 Dual-Mode Auth Sniffer (`CasinoWebLoginDialog.kt`)**:
+  - Auto-detection token & UID dari `window.localStorage` Betfury saat login via WebView.
+  - Opsi paste manual `token` atau `<token>;uid=<uid>`.
+- [x] **7.4 Pengkabelan Repository & Service (`CasinoRepository.kt`)**:
+  - Routing platform `BETFURY` ke `BetfuryAdapter` dengan penyimpanan kredensial aman di `EncryptedSharedPreferences`.
+  - Integrasi auto-scan wallet ke `CoinSelectorDialog`.
+- [x] **7.5 Verifikasi Unit Test & Kompilasi APK**:
+  - Unit test `AuthAndPlatformAdapterTest.kt` lolos 100% (27 tests completed, 0 failed).
+  - Gradle `assembleDebug` sukses (`BUILD SUCCESSFUL in 26s`).
+  - Sesuai SOP: **TIDAK ada rilis/deploy** yang dijalankan sebelum kata kunci `"Jang Release"`.
+
+---
+
 ## 2. Aturan Baku Rekayasa & Desain (Engineering & Design Rules)
 
 ### Rule 1: Solid White & Comfort Warm Orange (Zero Eye Strain)

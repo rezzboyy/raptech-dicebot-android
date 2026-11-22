@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.raptech.dicebot.data.adapter.BetfuryAdapter
 import com.raptech.dicebot.data.adapter.CasinoPlatformAdapter
 import com.raptech.dicebot.data.adapter.PickIoAdapter
 import com.raptech.dicebot.data.adapter.SimulatorAdapter
@@ -28,11 +29,17 @@ class CasinoRepository(context: Context) {
 
     val simulatorAdapter = SimulatorAdapter()
     private val pickAdapters = ConcurrentHashMap<CasinoPlatform, PickIoAdapter>()
+    val betfuryAdapter = BetfuryAdapter()
 
     init {
-        // Initialize Pick.io adapters with saved cookies
+        // Initialize Pick.io and Betfury adapters with saved credentials
         CasinoPlatform.values().forEach { platform ->
-            if (platform != CasinoPlatform.SIMULATOR) {
+            if (platform == CasinoPlatform.BETFURY) {
+                val token = securePrefs.getString("token_BETFURY", "") ?: ""
+                val uid = securePrefs.getString("uid_BETFURY", "") ?: ""
+                val cred = if (uid.isNotBlank()) "$token;uid=$uid" else token
+                betfuryAdapter.setCredentials(cred)
+            } else if (platform != CasinoPlatform.SIMULATOR) {
                 val savedCookie = securePrefs.getString("token_${platform.name}", "") ?: ""
                 pickAdapters[platform] = PickIoAdapter(platform, savedCookie)
             }
@@ -40,10 +47,10 @@ class CasinoRepository(context: Context) {
     }
 
     fun getAdapter(platform: CasinoPlatform): CasinoPlatformAdapter {
-        return if (platform == CasinoPlatform.SIMULATOR) {
-            simulatorAdapter
-        } else {
-            pickAdapters.computeIfAbsent(platform) {
+        return when (platform) {
+            CasinoPlatform.SIMULATOR -> simulatorAdapter
+            CasinoPlatform.BETFURY -> betfuryAdapter
+            else -> pickAdapters.computeIfAbsent(platform) {
                 val savedCookie = securePrefs.getString("token_${it.name}", "") ?: ""
                 PickIoAdapter(it, savedCookie)
             }
@@ -56,13 +63,20 @@ class CasinoRepository(context: Context) {
             .putString("uid_${platform.name}", uid.trim())
             .apply()
 
-        if (platform != CasinoPlatform.SIMULATOR) {
+        if (platform == CasinoPlatform.BETFURY) {
+            val cred = if (uid.isNotBlank()) "${token.trim()};uid=${uid.trim()}" else token.trim()
+            betfuryAdapter.setCredentials(cred)
+        } else if (platform != CasinoPlatform.SIMULATOR) {
             pickAdapters[platform]?.setCookie(token)
         }
     }
 
     fun getToken(platform: CasinoPlatform): String {
         return securePrefs.getString("token_${platform.name}", "") ?: ""
+    }
+
+    fun getUid(platform: CasinoPlatform): String {
+        return securePrefs.getString("uid_${platform.name}", "") ?: ""
     }
 
     fun hasCredentials(platform: CasinoPlatform): Boolean {
@@ -76,7 +90,9 @@ class CasinoRepository(context: Context) {
             .remove("uid_${platform.name}")
             .apply()
 
-        if (platform != CasinoPlatform.SIMULATOR) {
+        if (platform == CasinoPlatform.BETFURY) {
+            betfuryAdapter.setCredentials("")
+        } else if (platform != CasinoPlatform.SIMULATOR) {
             pickAdapters[platform]?.setCookie("")
         }
     }
