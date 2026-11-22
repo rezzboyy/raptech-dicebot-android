@@ -37,6 +37,8 @@ data class DicebotUiState(
     val longestNegativeStreak: Int = 0,
     val peakAmount: Double = 0.00000000,
     val largestDrawdown: Double = 0.00000000,
+    val minResult: Double = 0.00000000,
+    val maxResult: Double = 0.00000000,
     val speedBps: Double = 0.0,
     val sessionElapsedTimeMs: Long = 0L,
     val history: List<BetRecord> = emptyList(),

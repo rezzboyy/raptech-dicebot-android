@@ -212,6 +212,8 @@ class DicebotForegroundService : Service() {
                 val maxBal = maxOf(_uiState.value.maxBalance, newBalance)
                 val peak = maxOf(_uiState.value.peakAmount, lastBetDecision.amount)
                 val drawdown = minOf(_uiState.value.largestDrawdown, newNetResult)
+                val minRes = minOf(_uiState.value.minResult, newNetResult)
+                val maxRes = maxOf(_uiState.value.maxResult, newNetResult)
 
                 val record = BetRecord(
                     executionNumber = newExecCount,
@@ -286,6 +288,8 @@ class DicebotForegroundService : Service() {
                         maxBalance = maxBal,
                         peakAmount = peak,
                         largestDrawdown = drawdown,
+                        minResult = minRes,
+                        maxResult = maxRes,
                         sessionElapsedTimeMs = currentElapsed,
                         history = updatedHistory,
                         chartPoints = updatedChartPoints,
@@ -364,6 +368,8 @@ class DicebotForegroundService : Service() {
                 totalVolume = 0.0,
                 peakAmount = 0.0,
                 largestDrawdown = 0.0,
+                minResult = 0.0,
+                maxResult = 0.0,
                 speedBps = 0.0,
                 history = emptyList(),
                 chartPoints = emptyList()
@@ -387,6 +393,8 @@ class DicebotForegroundService : Service() {
                 totalVolume = 0.0,
                 peakAmount = 0.0,
                 largestDrawdown = 0.0,
+                minResult = 0.0,
+                maxResult = 0.0,
                 speedBps = 0.0,
                 initialBalance = currBal,
                 minBalance = currBal,

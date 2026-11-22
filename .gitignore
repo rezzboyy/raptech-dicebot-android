@@ -18,3 +18,4 @@ work_images/
 !app/src/main/res/**/*.png
 __pycache__/
 *.pyc
+*.mp4

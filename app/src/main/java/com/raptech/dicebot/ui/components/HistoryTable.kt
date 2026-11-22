@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -48,11 +50,13 @@ fun HistoryTable(
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
+
+    // Urutan terbalik: Bet terbaru selalu di index 0 teratas
     val displayHistory = remember(history) {
-        history.takeLast(100).reversed()
+        history.takeLast(200).reversed()
     }
 
-    // Auto-scroll to top when a new bet record arrives
+    // Auto-scroll mengunci ke baris teratas secara instan setiap ada roll baru
     LaunchedEffect(history.size) {
         if (displayHistory.isNotEmpty()) {
             listState.scrollToItem(0)
@@ -65,11 +69,11 @@ fun HistoryTable(
             .clip(RoundedCornerShape(8.dp))
             .background(RaptechColors.SurfaceWhite)
             .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(8.dp))
-            .padding(8.dp)
+            .padding(6.dp)
     ) {
-        // Bar Toolbar: Title & Export JSON Action
+        // Toolbar Atas: Judul & Tombol Export JSON
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -83,16 +87,16 @@ fun HistoryTable(
             if (history.isNotEmpty()) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(5.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .background(RaptechColors.SurfaceLight)
-                        .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(5.dp))
+                        .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(4.dp))
                         .clickable {
                             try {
                                 val json = Json { prettyPrint = true }.encodeToString(history)
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 val clip = ClipData.newPlainText("Raptech Bet History", json)
                                 clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, "${history.size} record berhasil diekspor ke Clipboard (JSON)!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "${history.size} record berhasil diekspor ke Clipboard!", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Gagal mengekspor: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
@@ -120,117 +124,155 @@ fun HistoryTable(
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-        // Table Header
-        Row(
+        // Grid Container: Header + Lazy List
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(5.dp))
-                .background(RaptechColors.SurfaceLight)
-                .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(5.dp))
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(5.dp))
         ) {
-            Text("#", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(0.4f))
-            Text("Nom Bet", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.2f))
-            Text("Chance", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(0.8f))
-            Text("Win / Lose", fontSize = 9.sp, color = RaptechColors.TextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f))
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        if (history.isEmpty()) {
-            Box(
+            // Table Header 6 Kolom
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 14.dp, horizontal = 8.dp),
-                contentAlignment = Alignment.Center
+                    .background(Color(0xFFEEF2F6))
+                    .padding(vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Belum ada riwayat roll. Tekan START untuk memulai sesi.",
-                    color = RaptechColors.TextMuted,
-                    fontSize = 11.sp
-                )
+                Text("#", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.35f).padding(start = 4.dp))
+                GridCellDivider()
+                Text("Amount", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1.25f).padding(start = 4.dp))
+                GridCellDivider()
+                Text("Cond", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.75f).padding(start = 4.dp))
+                GridCellDivider()
+                Text("Roll", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.65f).padding(start = 4.dp))
+                GridCellDivider()
+                Text("Profit", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1.25f).padding(start = 4.dp))
+                GridCellDivider()
+                Text("Nonce", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF334155), fontFamily = FontFamily.Monospace, modifier = Modifier.weight(0.45f).padding(start = 4.dp))
             }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                items(displayHistory, key = { it.executionNumber }) { item ->
-                    val isWin = item.isWin
-                    val rowBg = if (isWin) RaptechColors.WinBackground else RaptechColors.LossBackground
-                    val rowBorder = if (isWin) RaptechColors.WinBorder else RaptechColors.LossBorder
-                    val resultColor = if (isWin) RaptechColors.WinSuccess else RaptechColors.LossDanger
-                    val statusLabel = if (isWin) "WIN" else "LOSE"
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(rowBg)
-                            .border(0.5.dp, rowBorder, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 8.dp, vertical = 5.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 1. Roll #
-                        Text(
-                            text = "${item.executionNumber}",
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = RaptechColors.TextSecondary,
-                            modifier = Modifier.weight(0.4f)
-                        )
+            // Divider Pemisah Header & Data
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFCBD5E1)))
 
-                        // 2. Nom Bet (Amount)
-                        Text(
-                            text = String.format(Locale.US, "%.8f", item.amount),
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Medium,
-                            color = RaptechColors.TextPrimary,
-                            modifier = Modifier.weight(1.2f)
-                        )
+            if (history.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Belum ada riwayat roll. Tekan START untuk memulai sesi.",
+                        color = RaptechColors.TextMuted,
+                        fontSize = 10.5.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                ) {
+                    // Tanpa key agar Compose tidak me-retain anchor lama, index 0 selalu mengunci bet terbaru!
+                    items(displayHistory) { item ->
+                        val isWin = item.isWin
+                        // Full row background sesuai video contoh:
+                        val rowBg = if (isWin) Color(0xFFE6F7EC) else Color(0xFFFCE8E8)
+                        val profitColor = if (isWin) Color(0xFF1B5E20) else Color(0xFFB71C1C)
+                        val condStr = if (item.isHigh) "> " + String.format(Locale.US, "%.2f", item.targetChance) else "< " + String.format(Locale.US, "%.2f", item.targetChance)
 
-                        // 3. Chance (Target Chance)
-                        Text(
-                            text = "${String.format(Locale.US, "%.1f", item.targetChance)}%",
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = RaptechColors.TextSecondary,
-                            modifier = Modifier.weight(0.8f)
-                        )
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(rowBg)
+                                    .padding(vertical = 3.5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 1. Roll #
+                                Text(
+                                    text = "${item.executionNumber}",
+                                    fontSize = 9.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = Color(0xFF0F172A),
+                                    modifier = Modifier.weight(0.35f).padding(start = 4.dp)
+                                )
+                                GridCellDivider()
 
-                        // 4. Win / Lose (Status & Net Result)
-                        Row(
-                            modifier = Modifier.weight(1.4f),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = "[$statusLabel]",
-                                fontSize = 9.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                color = resultColor
-                            )
-                            Text(
-                                text = String.format(Locale.US, "%+.8f", item.netResult),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                color = resultColor
-                            )
+                                // 2. Amount
+                                Text(
+                                    text = String.format(Locale.US, "%.8f", item.amount),
+                                    fontSize = 9.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF0F172A),
+                                    modifier = Modifier.weight(1.25f).padding(start = 4.dp)
+                                )
+                                GridCellDivider()
+
+                                // 3. Condition
+                                Text(
+                                    text = condStr,
+                                    fontSize = 9.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = Color(0xFF334155),
+                                    modifier = Modifier.weight(0.75f).padding(start = 4.dp)
+                                )
+                                GridCellDivider()
+
+                                // 4. Roll Result
+                                Text(
+                                    text = String.format(Locale.US, "%.2f", item.rollResult),
+                                    fontSize = 9.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF0F172A),
+                                    modifier = Modifier.weight(0.65f).padding(start = 4.dp)
+                                )
+                                GridCellDivider()
+
+                                // 5. Profit
+                                Text(
+                                    text = String.format(Locale.US, "%+.8f", item.netResult),
+                                    fontSize = 9.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = profitColor,
+                                    modifier = Modifier.weight(1.25f).padding(start = 4.dp)
+                                )
+                                GridCellDivider()
+
+                                // 6. Nonce
+                                Text(
+                                    text = "${item.nonce}",
+                                    fontSize = 9.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = Color(0xFF334155),
+                                    modifier = Modifier.weight(0.45f).padding(start = 4.dp)
+                                )
+                            }
+
+                            // Garis pembatas horizontal antar baris
+                            Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color(0xFFE2E8F0)))
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun GridCellDivider() {
+    Box(
+        modifier = Modifier
+            .width(0.5.dp)
+            .height(14.dp)
+            .background(Color(0xFFCBD5E1))
+    )
 }
