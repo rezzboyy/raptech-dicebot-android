@@ -27,9 +27,14 @@ data class AutoFixResult(
 }
 
 /**
- * Intelligent AutoFix Engine for Raptech Dicebot LUA scripts.
- * Automatically analyzes and fixes syntax mistakes (JS/C typos, missing then/do,
- * unbalanced ends, missing dobet(), missing standard variables).
+ * High-Performance, Compiler-Guided AutoFix Engine for Raptech Dicebot LUA scripts.
+ * Capable of automatically diagnosing and healing:
+ * 1. Syntax typos (JS/C operators !=, &&, ||, !, ===, compound assignments, increment)
+ * 2. C/JS braces { ... } to LUA then/do/end blocks
+ * 3. Smart quotes and invisible zero-width unicode artifacts
+ * 4. Missing block closers (end) or excess ends
+ * 5. Stray syntax errors and broken tokens on specific error lines (iterative compiler healing)
+ * 6. Missing function dobet() wrapper and standard betting variables
  */
 object LuaScriptAutoFixer {
 
@@ -71,7 +76,31 @@ end
         // 2. Normalize line endings (CRLF -> LF)
         code = code.replace("\r\n", "\n").replace("\r", "\n")
 
-        // 3. Convert C-style comments before masking literals
+        // 3. Clean Unicode smart quotes and zero-width artifacts often pasted from web/chat
+        if (code.contains('“') || code.contains('”') || code.contains('‘') || code.contains('’')) {
+            code = code
+                .replace('“', '"')
+                .replace('”', '"')
+                .replace('‘', '\'')
+                .replace('’', '\'')
+            changes.add("Normalisasi tanda kutip cerdas (smart quotes) ke ASCII")
+        }
+        if (code.contains("\u200B") || code.contains("\uFEFF") || code.contains("\u00A0")) {
+            code = code
+                .replace("\u200B", "")
+                .replace("\uFEFF", "")
+                .replace("\u00A0", " ")
+            changes.add("Pembersihan karakter invisible zero-width")
+        }
+
+        // 4. Normalize JS keywords: let / const / var -> local
+        val jsVarPattern = Regex("\\b(let|const|var)\\s+")
+        if (jsVarPattern.containsMatchIn(code)) {
+            code = jsVarPattern.replace(code, "local ")
+            changes.add("Konversi keyword 'let/const/var' ke 'local'")
+        }
+
+        // 5. Convert C-style comments before masking literals
         // Multiline comment /* ... */ -> --[[ ... ]]
         val cMultiComment = Regex("/\\*([\\s\\S]*?)\\*/")
         if (cMultiComment.containsMatchIn(code)) {
@@ -86,7 +115,7 @@ end
             changes.add("Konversi komentar '//' ke '--'")
         }
 
-        // 4. Tokenize & Mask String Literals and Existing Lua Comments to prevent corruption
+        // 6. Tokenize & Mask String Literals and Existing Lua Comments to prevent corruption
         val literalPlaceholders = mutableListOf<String>()
         val literalPattern = Regex("(--\\[\\[[\\s\\S]*?\\]\\]|--[^\n]*|\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|\\[\\[[\\s\\S]*?\\]\\])")
 
@@ -96,7 +125,7 @@ end
             placeholder
         }
 
-        // 5. Replace C/JS Logical & Comparison Operators
+        // 7. Replace C/JS Logical & Comparison Operators
         // !== or != -> ~=
         if (maskedCode.contains("!==") || maskedCode.contains("!=")) {
             maskedCode = maskedCode.replace("!==", "~=").replace("!=", "~=")
@@ -128,7 +157,7 @@ end
             changes.add("Ganti operator '!' ke 'not '")
         }
 
-        // 6. Replace C/JS Literals & Keywords
+        // 8. Replace C/JS Literals & Keywords
         val boolTruePattern = Regex("\\bTrue\\b")
         if (boolTruePattern.containsMatchIn(maskedCode)) {
             maskedCode = boolTruePattern.replace(maskedCode, "true")
@@ -150,7 +179,7 @@ end
             changes.add("Ganti 'else if' ke 'elseif'")
         }
 
-        // 7. Compound Assignments & Increment/Decrement (x++, x--, x += y, etc.)
+        // 9. Compound Assignments & Increment/Decrement (x++, x--, x += y, etc.)
         val incPattern = Regex("([a-zA-Z0-9_.]+)\\s*\\+\\+")
         if (incPattern.containsMatchIn(maskedCode)) {
             maskedCode = incPattern.replace(maskedCode) { "${it.groupValues[1]} = ${it.groupValues[1]} + 1" }
@@ -177,7 +206,7 @@ end
             changes.add("Konversi '/=' ke 'x = x / y'")
         }
 
-        // 8. C-style Braces for Control Blocks ({ ... })
+        // 10. C-style Braces for Control Blocks ({ ... })
         // First convert "} else if" and "} else {" so that '}' is not mistakenly turned into 'end else'
         val closeElseIfBracePattern = Regex("\\}\\s*else\\s*if\\s*\\((.*?)\\)\\s*\\{")
         if (closeElseIfBracePattern.containsMatchIn(maskedCode)) {
@@ -241,14 +270,14 @@ end
             changes.add("Ganti '}' ke 'end'")
         }
 
-        // 9. Unmask Literals & Comments
+        // 11. Unmask Literals & Comments
         literalPlaceholders.forEachIndexed { index, literal ->
             maskedCode = maskedCode.replace("___RAPTECH_LITERAL_${index}___", literal)
         }
 
         code = maskedCode
 
-        // 10. Line-by-Line missing 'then' and 'do' check
+        // 12. Line-by-Line missing 'then' and 'do' check
         val lines = code.lines().toMutableList()
         var lineModified = false
         for (i in lines.indices) {
@@ -275,7 +304,7 @@ end
             code = lines.joinToString("\n")
         }
 
-        // 11. Balance Blocks & Fix Missing / Excess 'end'
+        // 13. Balance Blocks & Fix Missing / Excess 'end'
         val stripped = stripCommentsAndStrings(code)
         val openTokens = Regex("\\b(function|if|while|for)\\b").findAll(stripped).count()
         val totalClosers = Regex("\\bend\\b").findAll(stripped).count()
@@ -299,7 +328,7 @@ end
             }
         }
 
-        // 12. Check if 'function dobet()' exists
+        // 14. Check if 'function dobet()' exists
         val hasDobet = Regex("\\b(function\\s+dobet\\s*\\(|dobet\\s*=\\s*function)").containsMatchIn(code)
         if (!hasDobet) {
             val hasBettingLogic = Regex("\\b(win|nextbet|basebet|previousbet|chance|bethigh|balance|currentstreak)\\b").containsMatchIn(code)
@@ -335,7 +364,7 @@ end
             }
         }
 
-        // 13. Ensure Essential Variables Are Declared
+        // 15. Ensure Essential Variables Are Declared
         val strippedAfter = stripCommentsAndStrings(code)
         val hasBasebet = Regex("\\b(basebet|base)\\s*=").containsMatchIn(strippedAfter)
         val hasNextbet = Regex("\\bnextbet\\s*=").containsMatchIn(strippedAfter)
@@ -364,17 +393,93 @@ end
             code = prependLines.joinToString("\n") + "\n\n" + code
         }
 
-        // 14. Validate Syntax with LuaEngine
+        // 16. Compiler-Guided Iterative Error Healing Loop
         var validation = LuaEngine.validateSyntax(code)
+        var iteration = 0
+        val maxIterations = 8
 
-        // 15. If validation still failed with 'end' expected, try adding one more 'end'
-        if (!validation.isValid && validation.errorMessage?.contains("'end' expected") == true) {
-            val retryCode = code.trimEnd() + "\nend\n"
-            val retryValidation = LuaEngine.validateSyntax(retryCode)
-            if (retryValidation.isValid) {
-                code = retryCode
-                validation = retryValidation
-                changes.add("Melengkapi 'end' penutup pada akhir file")
+        while (!validation.isValid && iteration < maxIterations) {
+            iteration++
+            val errLine = validation.errorLine
+            val errMsg = validation.errorMessage ?: ""
+            val codeLines = code.lines().toMutableList()
+            var healed = false
+
+            if (errLine != null && errLine in 1..codeLines.size) {
+                val lineIdx = errLine - 1
+                val targetLine = codeLines[lineIdx]
+                val trimmedLine = targetLine.trim()
+
+                // Case 1: Missing 'end' expected near this line or EOF
+                if (errMsg.contains("'end' expected")) {
+                    codeLines.add(lineIdx + 1, "end")
+                    changes.add("Menambahkan 'end' penutup pada baris $errLine")
+                    healed = true
+                }
+                // Case 2: Excess 'end' reported
+                else if (errMsg.contains("unexpected symbol near 'end'") || (trimmedLine == "end" && errMsg.contains("unexpected symbol"))) {
+                    codeLines.removeAt(lineIdx)
+                    changes.add("Menghapus kelebihan 'end' pada baris $errLine")
+                    healed = true
+                }
+                // Case 3: Stray token / broken identifier (e.g. user typed 'ub', random typo, or stray text)
+                else if (trimmedLine.isNotEmpty() && !trimmedLine.startsWith("--")) {
+                    // Check if it's an isolated single word / symbol without assignment or call
+                    if (Regex("^[a-zA-Z0-9_.]+$").matches(trimmedLine)) {
+                        val knownFunctions = listOf("stop", "reset", "resetstats", "resetall", "start", "play", "pause", "resume", "ching", "alarm", "checkbalance")
+                        if (knownFunctions.contains(trimmedLine.lowercase())) {
+                            codeLines[lineIdx] = "${trimmedLine}()"
+                            changes.add("Memperbaiki pemanggilan fungsi '${trimmedLine}()' pada baris $errLine")
+                        } else {
+                            // Stray identifier like "ub" -> comment it out so compiler succeeds
+                            codeLines[lineIdx] = "-- [AutoFix dinonaktifkan: bukan perintah LUA valid] $targetLine"
+                            changes.add("Menonaktifkan baris error '$trimmedLine' pada baris $errLine")
+                        }
+                        healed = true
+                    }
+                    // Case 4: Incomplete assignment (e.g. "nextbet =" or "chance =")
+                    else if (Regex("^[a-zA-Z0-9_.]+\\s*=$").matches(trimmedLine)) {
+                        val varName = trimmedLine.substringBefore("=").trim()
+                        val defaultValue = when (varName.lowercase()) {
+                            "nextbet", "previousbet" -> "basebet"
+                            "basebet", "base" -> "0.0001"
+                            "chance" -> "49.5"
+                            "bethigh", "high" -> "true"
+                            else -> "0"
+                        }
+                        codeLines[lineIdx] = "$targetLine $defaultValue"
+                        changes.add("Melengkapi nilai variabel '$varName = $defaultValue' pada baris $errLine")
+                        healed = true
+                    }
+                    // Case 5: Missing 'then' or 'do' on the line where compiler expected it
+                    else if (errMsg.contains("'then' expected") && !trimmedLine.contains("then")) {
+                        codeLines[lineIdx] = "$targetLine then"
+                        changes.add("Menambahkan 'then' pada baris $errLine")
+                        healed = true
+                    } else if (errMsg.contains("'do' expected") && !trimmedLine.contains("do")) {
+                        codeLines[lineIdx] = "$targetLine do"
+                        changes.add("Menambahkan 'do' pada baris $errLine")
+                        healed = true
+                    }
+                    // Case 6: General unparseable syntax error on this line -> safely comment out
+                    else if (errMsg.contains("syntax error") || errMsg.contains("unexpected symbol")) {
+                        codeLines[lineIdx] = "-- [AutoFix dinonaktifkan: error sintaks] $targetLine"
+                        changes.add("Menonaktifkan baris error '$trimmedLine' pada baris $errLine")
+                        healed = true
+                    }
+                }
+            } else if (errMsg.contains("'end' expected")) {
+                // EOF missing end
+                codeLines.add("end")
+                changes.add("Melengkapi 'end' penutup pada akhir skrip")
+                healed = true
+            }
+
+            if (healed) {
+                code = codeLines.joinToString("\n")
+                validation = LuaEngine.validateSyntax(code)
+            } else {
+                break
             }
         }
 

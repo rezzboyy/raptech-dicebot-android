@@ -139,4 +139,54 @@ class LuaScriptAutoFixerTest {
         assertTrue("Harus mendeklarasikan bethigh", result.fixedScript.contains("bethigh ="))
         assertTrue("Harus valid", result.isValid)
     }
+
+    @Test
+    fun testFixStrayTokenSyntaxErrorLikeUserScreenshot() {
+        val brokenScript = """
+            basebet = 0.0001
+            nextbet = basebet
+            chance = 49.5
+            bethigh = true
+
+            function dobet()
+                if win then
+                    nextbet = basebet
+                else
+                    nextbet = previousbet * 2
+                end
+            end
+
+            ub
+        """.trimIndent()
+
+        val result = LuaScriptAutoFixer.fix(brokenScript)
+        assertTrue("Harus memodifikasi skrip", result.isModified)
+        assertTrue("Skrip harus valid setelah AutoFix mengobati error 'ub': ${result.errorMessage}", result.isValid)
+        val validation = LuaEngine.validateSyntax(result.fixedScript)
+        assertTrue("Validasi LuaEngine harus berhasil: ${validation.errorMessage}", validation.isValid)
+    }
+
+    @Test
+    fun testFixSmartQuotesAndJsKeywords() {
+        val brokenScript = """
+            let basebet = 0.0001
+            let nextbet = basebet
+            var chance = 49.5
+            const bethigh = true
+
+            function dobet()
+                if win then
+                    print(“MENANG!”)
+                    nextbet = basebet
+                else
+                    nextbet = previousbet * 2
+                end
+            end
+        """.trimIndent()
+
+        val result = LuaScriptAutoFixer.fix(brokenScript)
+        assertTrue("Harus valid setelah membersihkan smart quotes dan let/var/const: ${result.errorMessage}", result.isValid)
+        assertFalse("Tidak boleh ada smart quotes", result.fixedScript.contains("“"))
+        assertFalse("Tidak boleh ada let", result.fixedScript.contains("let "))
+    }
 }

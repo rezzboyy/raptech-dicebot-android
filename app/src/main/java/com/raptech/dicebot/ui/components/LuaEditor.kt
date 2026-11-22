@@ -92,70 +92,66 @@ fun LuaEditor(
             .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(8.dp))
             .padding(8.dp)
     ) {
-        // Row 1: Choose File & FX on Left, AutoFix in Center, Check & Clear on Right
+        // Row 1: Compact Toolbar (All 5 buttons guaranteed to fit and never squish)
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left: Choose File & FX / Variabel
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            // 1. Choose File Button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(RaptechColors.OrangePrimary)
+                    .clickable { filePickerLauncher.launch(arrayOf("*/*")) }
+                    .padding(horizontal = 7.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Choose File Button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(RaptechColors.OrangePrimary)
-                        .clickable { filePickerLauncher.launch(arrayOf("*/*")) }
-                        .padding(horizontal = 7.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = "Choose File",
-                            tint = Color.White,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "Choose File",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-
-                // Dedicated Function & Variable Reference Menu Button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(RaptechColors.OrangeSoft)
-                        .border(1.dp, RaptechColors.OrangeBorder, RoundedCornerShape(5.dp))
-                        .clickable { showVariablesDialog = true }
-                        .padding(horizontal = 6.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                    Icon(
+                        imageVector = Icons.Default.FolderOpen,
+                        contentDescription = "Choose File",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
                     Text(
-                        text = "FX / Variabel",
-                        fontSize = 10.5.sp,
+                        text = "Choose File",
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = RaptechColors.OrangePrimary
+                        color = Color.White
                     )
                 }
             }
 
-            // Center: AutoFix Button
+            // 2. Dedicated FX / Variabel Reference Menu Button
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(5.dp))
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(RaptechColors.OrangeSoft)
+                    .border(1.dp, RaptechColors.OrangeBorder, RoundedCornerShape(4.dp))
+                    .clickable { showVariablesDialog = true }
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "FX / Var",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = RaptechColors.OrangePrimary
+                )
+            }
+
+            // 3. AutoFix Button (Compact Emerald Accent)
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
                     .background(Color(0xFFECFDF5))
-                    .border(1.dp, Color(0xFF10B981), RoundedCornerShape(5.dp))
+                    .border(1.dp, Color(0xFF10B981), RoundedCornerShape(4.dp))
                     .clickable {
                         val fixRes = LuaScriptAutoFixer.fix(script)
                         if (fixRes.fixedScript != script) {
@@ -163,7 +159,7 @@ fun LuaEditor(
                         }
                         draftStatus = fixRes.summaryMessage
                     }
-                    .padding(horizontal = 7.dp, vertical = 5.dp),
+                    .padding(horizontal = 7.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -174,30 +170,27 @@ fun LuaEditor(
                         imageVector = Icons.Default.AutoFixHigh,
                         contentDescription = "AutoFix",
                         tint = Color(0xFF059669),
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(12.dp)
                     )
                     Text(
                         text = "AutoFix",
-                        fontSize = 10.5.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF047857)
                     )
                 }
             }
 
-            // Right: Quick Actions Check & Clear
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                EditorActionButton("Cek Sintaks", RaptechColors.SurfaceLight, RaptechColors.TextPrimary) {
-                    val res = LuaEngine.validateSyntax(script)
-                    draftStatus = if (res.isValid) "Sintaks LUA Valid ✓" else "Error baris ${res.errorLine ?: "?"}: ${res.errorMessage}"
-                }
-                EditorActionButton("Clear", RaptechColors.LossBackground, RaptechColors.LossDanger) {
-                    onScriptChange("")
-                    draftStatus = "Editor dikosongkan"
-                }
+            // 4. Quick Action: Cek Sintaks
+            EditorActionButton("Cek Sintaks", RaptechColors.SurfaceLight, RaptechColors.TextPrimary) {
+                val res = LuaEngine.validateSyntax(script)
+                draftStatus = if (res.isValid) "Sintaks LUA Valid ✓" else "Error baris ${res.errorLine ?: "?"}: ${res.errorMessage}"
+            }
+
+            // 5. Quick Action: Clear
+            EditorActionButton("Clear", RaptechColors.LossBackground, RaptechColors.LossDanger) {
+                onScriptChange("")
+                draftStatus = "Editor dikosongkan"
             }
         }
 
@@ -328,7 +321,7 @@ private fun EditorActionButton(
             .background(bgColor)
             .border(1.dp, RaptechColors.BorderSubtle, RoundedCornerShape(4.dp))
             .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 7.dp, vertical = 4.dp)
     ) {
         Text(text = text, fontSize = 10.sp, color = textColor, fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium)
     }
