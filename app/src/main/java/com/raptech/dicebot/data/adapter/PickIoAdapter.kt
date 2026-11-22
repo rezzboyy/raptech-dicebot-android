@@ -170,8 +170,8 @@ class PickIoAdapter(
         runCatching {
             require(amount > 0) { "Bet amount harus lebih besar dari 0" }
 
-            // Coerce amount to platform minBet
-            val finalAmount = amount.coerceAtLeast(platform.minBet)
+            // Taruhan murni mengikuti keputusan skrip LUA tanpa silent clamping
+            val finalAmount = amount.coerceAtLeast(0.00000001)
 
             // Ensure CSRF token is available
             if (csrfToken.isBlank()) {

@@ -126,9 +126,9 @@ enum class CasinoPlatform(
         isDirectApi = false,
         defaultLoginUrl = "",
         supportedCoins = listOf("TRX", "DOGE", "LTC", "BNB", "SOL", "POL", "BTC", "ETH", "USDT", "BCH", "TON"),
-        unitDivisor = 1_000_000.0,
-        decimalPrecision = 6,
-        minBet = 0.0001
+        unitDivisor = 100_000_000.0,
+        decimalPrecision = 8,
+        minBet = 0.00000001
     )
 }
 

@@ -160,10 +160,9 @@ class DicebotForegroundService : Service() {
 
                 val currentElapsed = System.currentTimeMillis() - startTime
 
-                // Circuit Breaker: Batasi nilai taruhan minimum sesuai platform Pick.io
-                val minBet = _uiState.value.selectedPlatform.minBet
-                if (lastBetDecision.amount < minBet) {
-                    lastBetDecision = lastBetDecision.copy(amount = minBet)
+                // Taruhan murni 100% mengikuti keputusan skrip LUA (Script is King)
+                if (lastBetDecision.amount <= 0.0) {
+                    lastBetDecision = lastBetDecision.copy(amount = 0.00000001)
                 }
 
                 // Circuit Breaker: Batasi nilai taruhan maksimum jika maxBetLimit diatur
@@ -246,7 +245,7 @@ class DicebotForegroundService : Service() {
                     peakAmount = peak,
                     largestDrawdown = drawdown,
                     casino = _uiState.value.selectedPlatform.name.lowercase(),
-                    minBet = minBet,
+                    minBet = _uiState.value.selectedPlatform.minBet,
                     elapsedSeconds = currentElapsed / 1000L,
                     speedBps = _uiState.value.speedBps
                 )

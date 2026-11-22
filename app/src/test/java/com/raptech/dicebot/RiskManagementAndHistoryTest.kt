@@ -145,4 +145,82 @@ class RiskManagementAndHistoryTest {
         assertEquals(-0.02, minPnl, 0.00001)
         assertEquals(0.05, maxPnl, 0.00001)
     }
+
+    @Test
+    fun testLuaEngineExactMicroBettingFollowsScript() {
+        val luaEngine = com.raptech.dicebot.engine.LuaEngine()
+        val script = """
+            chance = 49.5
+            bethigh = true
+            basebet = 0.00000001
+            nextbet = basebet
+
+            function dobet()
+              if win then
+                nextbet = basebet
+              else
+                nextbet = previousbet * 2
+              end
+            end
+        """.trimIndent()
+
+        val initResult = luaEngine.initScript(
+            script = script,
+            initialBalance = 500.0,
+            currency = "TRX",
+            casino = "simulation",
+            minBet = 0.00000001
+        )
+        assertTrue(initResult.isSuccess)
+
+        // 1. Roll 1 should be exactly 0.00000001
+        val initialDecision = luaEngine.getInitialBetDecision()
+        assertEquals(0.00000001, initialDecision.amount, 0.0000000001)
+        assertEquals(49.5, initialDecision.chance, 0.01)
+        assertTrue(initialDecision.isHigh)
+
+        // 2. Roll 1 finishes with LOSE -> nextbet should be 0.00000002
+        val loseRecord = BetRecord(
+            executionNumber = 1L,
+            amount = 0.00000001,
+            targetChance = 49.5,
+            isHigh = true,
+            rollResult = 30.0,
+            isWin = false,
+            netResult = -0.00000001,
+            nonce = 1L
+        )
+        val nextAfterLose = luaEngine.onRollCompleted(
+            lastRecord = loseRecord,
+            currentBalance = 499.99999999,
+            totalProfit = -0.00000001,
+            totalBets = 1L,
+            totalWins = 0L,
+            totalLosses = 1L,
+            totalVolume = 0.00000001
+        )
+        assertEquals(0.00000002, nextAfterLose.amount, 0.0000000001)
+
+        // 3. Roll 2 finishes with WIN -> nextbet should reset to basebet (0.00000001)
+        val winRecord = BetRecord(
+            executionNumber = 2L,
+            amount = 0.00000002,
+            targetChance = 49.5,
+            isHigh = true,
+            rollResult = 80.0,
+            isWin = true,
+            netResult = 0.00000002,
+            nonce = 2L
+        )
+        val nextAfterWin = luaEngine.onRollCompleted(
+            lastRecord = winRecord,
+            currentBalance = 500.00000001,
+            totalProfit = 0.00000001,
+            totalBets = 2L,
+            totalWins = 1L,
+            totalLosses = 1L,
+            totalVolume = 0.00000003
+        )
+        assertEquals(0.00000001, nextAfterWin.amount, 0.0000000001)
+    }
 }

@@ -78,7 +78,7 @@ fun MetricsDashboard(
                         color = RaptechColors.TextSecondary
                     )
                     Text(
-                        text = String.format(Locale.US, "%.6f", state.balance),
+                        text = String.format(Locale.US, "%.8f", state.balance),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -98,7 +98,7 @@ fun MetricsDashboard(
                         color = RaptechColors.TextSecondary
                     )
                     Text(
-                        text = String.format(Locale.US, "%+.6f", state.netResult),
+                        text = String.format(Locale.US, "%+.8f", state.netResult),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,

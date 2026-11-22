@@ -190,7 +190,7 @@ fun HistoryTable(
 
                         // 2. Nom Bet (Amount)
                         Text(
-                            text = String.format(Locale.US, "%.6f", item.amount),
+                            text = String.format(Locale.US, "%.8f", item.amount),
                             fontSize = 10.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Medium,
@@ -221,7 +221,7 @@ fun HistoryTable(
                                 color = resultColor
                             )
                             Text(
-                                text = String.format(Locale.US, "%+.6f", item.netResult),
+                                text = String.format(Locale.US, "%+.8f", item.netResult),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,

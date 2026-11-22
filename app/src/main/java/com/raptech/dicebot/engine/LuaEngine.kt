@@ -134,6 +134,19 @@ class LuaEngine(
             val chunk = globals.load(script)
             chunk.call()
 
+            // 5. Pastikan previousbet awal sinkron dengan nilai awal taruhan yang ditentukan di skrip
+            val scriptInitialBet = when {
+                globals.get("nextbet").isnumber() -> globals.get("nextbet").todouble()
+                globals.get("NextBet").isnumber() -> globals.get("NextBet").todouble()
+                globals.get("basebet").isnumber() -> globals.get("basebet").todouble()
+                globals.get("BaseBet").isnumber() -> globals.get("BaseBet").todouble()
+                globals.get("base").isnumber() -> globals.get("base").todouble()
+                globals.get("Base").isnumber() -> globals.get("Base").todouble()
+                else -> initialBase
+            }
+            globals.set("previousbet", LuaValue.valueOf(scriptInitialBet))
+            globals.set("PreviousBet", LuaValue.valueOf(scriptInitialBet))
+
             isInitialized = true
         }
     }
@@ -682,7 +695,7 @@ class LuaEngine(
 
     fun getInitialBetDecision(): NextBetDecision {
         if (!isInitialized) {
-            return NextBetDecision(amount = 0.0001, chance = 49.5, isHigh = false)
+            return NextBetDecision(amount = 0.00000001, chance = 49.5, isHigh = false)
         }
 
         // Check nextbet / NextBet first
@@ -706,7 +719,7 @@ class LuaEngine(
                 b.isnumber() -> b.todouble()
                 bbUpper.isnumber() -> bbUpper.todouble()
                 bUpper.isnumber() -> bUpper.todouble()
-                else -> 0.0001
+                else -> 0.00000001
             }
         }
 
