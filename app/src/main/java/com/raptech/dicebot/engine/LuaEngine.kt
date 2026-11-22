@@ -301,14 +301,17 @@ class LuaEngine(
             }
         })
 
-        // resetseed()
-        globals.set("resetseed", object : ZeroArgFunction() {
+        // resetseed(), resetclientseed(), resetserverseed()
+        val resetSeedFunc = object : ZeroArgFunction() {
             override fun call(): LuaValue {
                 onLog("🌱 resetseed() dipanggil dari dalam skrip LUA.")
                 onResetSeedRequested()
                 return LuaValue.NONE
             }
-        })
+        }
+        globals.set("resetseed", resetSeedFunc)
+        globals.set("resetclientseed", resetSeedFunc)
+        globals.set("resetserverseed", resetSeedFunc)
 
         // resetchart()
         globals.set("resetchart", object : ZeroArgFunction() {

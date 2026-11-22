@@ -364,33 +364,12 @@ end
             }
         }
 
-        // 15. Ensure Essential Variables Are Declared
+        // 15. Only declare nextbet if completely missing from script
         val strippedAfter = stripCommentsAndStrings(code)
-        val hasBasebet = Regex("\\b(basebet|base)\\s*=").containsMatchIn(strippedAfter)
-        val hasNextbet = Regex("\\bnextbet\\s*=").containsMatchIn(strippedAfter)
-        val hasChance = Regex("\\bchance\\s*=").containsMatchIn(strippedAfter)
-        val hasBethigh = Regex("\\bbethigh\\s*=").containsMatchIn(strippedAfter)
-
-        val prependLines = mutableListOf<String>()
-        if (!hasBasebet) {
-            prependLines.add("basebet = 0.0001")
-            changes.add("Mendeklarasikan 'basebet = 0.0001'")
-        }
-        if (!hasNextbet) {
-            prependLines.add("nextbet = basebet")
-            changes.add("Mendeklarasikan 'nextbet = basebet'")
-        }
-        if (!hasChance) {
-            prependLines.add("chance = 49.5")
-            changes.add("Mendeklarasikan 'chance = 49.5'")
-        }
-        if (!hasBethigh) {
-            prependLines.add("bethigh = true")
-            changes.add("Mendeklarasikan 'bethigh = true'")
-        }
-
-        if (prependLines.isNotEmpty()) {
-            code = prependLines.joinToString("\n") + "\n\n" + code
+        val hasBetDeclaration = Regex("\\b(nextbet|basebet|base)\\s*=").containsMatchIn(strippedAfter)
+        if (!hasBetDeclaration) {
+            code = "nextbet = 0.0001\n" + code
+            changes.add("Mendeklarasikan 'nextbet = 0.0001'")
         }
 
         // 16. Compiler-Guided Iterative Error Healing Loop
