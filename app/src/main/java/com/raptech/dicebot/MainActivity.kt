@@ -25,6 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.raptech.dicebot.data.adapter.BetfuryWebViewManager
 import com.raptech.dicebot.data.network.CasinoHttpClient
 import com.raptech.dicebot.data.updater.DicebotUpdateManager
 import com.raptech.dicebot.data.updater.UpdateCheckResult
@@ -161,6 +162,9 @@ class MainActivity : ComponentActivity() {
                                 botService?.toggleStopOnWin()
                             },
                             onPlatformSelected = { platform ->
+                                if (platform == com.raptech.dicebot.model.CasinoPlatform.BETFURY) {
+                                    BetfuryWebViewManager.getOrCreateWebView(this@MainActivity)
+                                }
                                 botService?.updatePlatform(platform)
                             },
                             onScriptChanged = { script ->

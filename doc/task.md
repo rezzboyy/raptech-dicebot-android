@@ -226,6 +226,24 @@ Fokus aktif saat ini adalah transformasi menyeluruh antarmuka menuju tema **Soli
 
 ---
 
+### Track 8: Arsitektur Persistent In-WebView Bridge (Opsi A) Betfury (Status: SELESAI & TERTUTUP ✓)
+- [x] **8.1 Pembuatan Singleton `BetfuryWebViewManager.kt`**:
+  - Intersepsi `window.WebSocket` resmi Betfury di dalam browser untuk menangkap payload autentikasi `profile.token` dan respon taruhan `games.dice.bet`.
+  - Continuous scanner saldo otomatis dari Nuxt Store (`window.$nuxt.$store`) dan DOM traversal.
+  - Eksekusi taruhan `placeBet` latensi rendah langsung via WebSocket browser yang sudah terotentikasi dan lolos Cloudflare Turnstile.
+- [x] **8.2 Pengkabelan `CasinoWebLoginDialog.kt` & Siklus Hidup Persistent**:
+  - Menggunakan WebView persisten yang tidak di-destroy saat dialog ditutup (`platform == BETFURY`), menjaga sesi dan socket browser tetap hidup di background.
+  - Injeksi otomatis `INJECTION_SCRIPT` pada siklus `onPageStarted` dan `onPageFinished`.
+- [x] **8.3 Refactoring `BetfuryAdapter.kt`**:
+  - Rute prioritas utama: `placeDiceBet` dan `fetchBalance` dieksekusi melalui `BetfuryWebViewManager`.
+  - Rute fallback: Background OkHttp Socket.IO client tetap siap jika bridge belum aktif.
+- [x] **8.4 Verifikasi Unit Test & Kompilasi Debug APK**:
+  - Unit test `./gradlew test` lulus 100% (46 tasks).
+  - Gradle `assembleDebug` sukses (`BUILD SUCCESSFUL in 18s`).
+  - Sesuai SOP: **TIDAK ada rilis/deploy** yang dijalankan sebelum kata kunci `"Jang Release"`.
+
+---
+
 ## 2. Aturan Baku Rekayasa & Desain (Engineering & Design Rules)
 
 ### Rule 1: Solid White & Comfort Warm Orange (Zero Eye Strain)

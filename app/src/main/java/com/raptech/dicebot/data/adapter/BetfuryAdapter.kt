@@ -47,6 +47,22 @@ class BetfuryAdapter(
             var token = ""
             var uid = ""
 
+            // 0. Check BetfuryWebViewManager captured credentials first if available
+            if (BetfuryWebViewManager.capturedToken.isNotBlank()) {
+                token = BetfuryWebViewManager.capturedToken
+                uid = BetfuryWebViewManager.capturedUid
+                val fp = if (BetfuryWebViewManager.capturedFingerprint.isNotBlank()) {
+                    BetfuryWebViewManager.capturedFingerprint
+                } else if (uid.contains("_")) {
+                    uid.split("_")[0]
+                } else {
+                    uid
+                }
+                if (token.isNotBlank()) {
+                    return Triple(token, uid, fp)
+                }
+            }
+
             // 1. Check for JWT pattern anywhere (starts with eyJ... with 2 or 3 segments)
             val jwtRegex = Regex("""eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]+""")
             val jwtMatch = jwtRegex.find(trimmed)
@@ -461,6 +477,17 @@ class BetfuryAdapter(
 
     override suspend fun fetchBalance(currency: String): Result<Double> = withContext(Dispatchers.IO) {
         val cur = currency.uppercase(Locale.ROOT)
+
+        // 1. Prioritas Utama: In-WebView Bridge (Imun Cloudflare & Sinkron Langsung ke Browser)
+        if (BetfuryWebViewManager.isReady()) {
+            val bridgeBal = BetfuryWebViewManager.fetchBalance(cur)
+            if (bridgeBal.isSuccess && bridgeBal.getOrThrow() > 0.0) {
+                cachedBalances[cur] = bridgeBal.getOrThrow()
+                return@withContext bridgeBal
+            }
+        }
+
+        // 2. Fallback: Background OkHttp Socket.IO
         try {
             ensureConnected()
             if (!cachedBalances.containsKey(cur) || cur != activeCurrency) {
@@ -469,9 +496,9 @@ class BetfuryAdapter(
             val bal = cachedBalances[cur] ?: 0.0
             Result.success(bal)
         } catch (e: Exception) {
-            val fallbackBal = cachedBalances[cur]
+            val fallbackBal = cachedBalances[cur] ?: BetfuryWebViewManager.cachedBalances[cur]
             if (fallbackBal != null && fallbackBal > 0.0) {
-                logW("WebSocket belum siap atau ditahan Cloudflare, menggunakan saldo aktif: $fallbackBal")
+                logW("WebSocket background ditahan Cloudflare, menggunakan saldo aktif bridge: $fallbackBal")
                 Result.success(fallbackBal)
             } else {
                 Result.failure(e)
@@ -480,8 +507,17 @@ class BetfuryAdapter(
     }
 
     override suspend fun fetchAvailableBalances(): Result<List<CoinBalance>> = withContext(Dispatchers.IO) {
+        // Sinkronkan seluruh saldo dari BetfuryWebViewManager
+        BetfuryWebViewManager.cachedBalances.forEach { (coin, bal) ->
+            if (bal > 0.0 || !cachedBalances.containsKey(coin)) {
+                cachedBalances[coin] = bal
+            }
+        }
+
         try {
-            ensureConnected()
+            if (!BetfuryWebViewManager.isReady()) {
+                ensureConnected()
+            }
             val list = cachedBalances.map { (coin, bal) ->
                 CoinBalance(currency = coin, balance = bal, isAvailable = true)
             }.sortedWith(
@@ -491,7 +527,18 @@ class BetfuryAdapter(
             )
             Result.success(list)
         } catch (e: Exception) {
-            Result.failure(e)
+            if (cachedBalances.isNotEmpty()) {
+                val list = cachedBalances.map { (coin, bal) ->
+                    CoinBalance(currency = coin, balance = bal, isAvailable = true)
+                }.sortedWith(
+                    compareByDescending<CoinBalance> { it.balance > 0 }
+                        .thenByDescending { it.balance }
+                        .thenBy { it.currency }
+                )
+                Result.success(list)
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
@@ -501,9 +548,23 @@ class BetfuryAdapter(
         isHigh: Boolean,
         currency: String
     ): Result<BetResponse> = withContext(Dispatchers.IO) {
+        val cur = currency.uppercase(Locale.ROOT)
+
+        // 1. Prioritas Utama: Eksekusi In-WebView Bridge (100% Berjalan di Origin Browser, Imun WAF Cloudflare)
+        if (BetfuryWebViewManager.isReady()) {
+            val bridgeRes = BetfuryWebViewManager.placeBet(amount, target, isHigh, cur)
+            if (bridgeRes.isSuccess) {
+                val data = bridgeRes.getOrThrow()
+                cachedBalances[cur] = data.newBalance
+                return@withContext bridgeRes
+            } else {
+                logW("In-WebView Bridge bet gagal (${bridgeRes.exceptionOrNull()?.message}), mencoba fallback ke background socket...")
+            }
+        }
+
+        // 2. Fallback: Background OkHttp Socket.IO Client
         try {
             ensureConnected()
-            val cur = currency.uppercase(Locale.ROOT)
             if (cur != activeCurrency) {
                 changeCurrency(cur)
             }

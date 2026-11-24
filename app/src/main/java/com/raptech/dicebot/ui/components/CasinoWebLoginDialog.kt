@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.raptech.dicebot.data.adapter.BetfuryAdapter
+import com.raptech.dicebot.data.adapter.BetfuryWebViewManager
 import com.raptech.dicebot.data.adapter.CasinoPlatformAdapter
 import com.raptech.dicebot.data.adapter.PickIoAdapter
 import com.raptech.dicebot.model.CasinoPlatform
@@ -234,10 +235,22 @@ fun CasinoWebLoginDialog(
 
             withContext(Dispatchers.Main) {
                 isVerifyingSession = false
-                if (balanceRes.isSuccess || (platform == CasinoPlatform.BETFURY && fallbackBalance > 0.0)) {
-                    val bal = if (balanceRes.isSuccess) balanceRes.getOrThrow() else fallbackBalance
+                if (balanceRes.isSuccess || (platform == CasinoPlatform.BETFURY && (fallbackBalance > 0.0 || BetfuryWebViewManager.isReady()))) {
+                    val bal = if (balanceRes.isSuccess) {
+                        balanceRes.getOrThrow()
+                    } else if (fallbackBalance > 0.0) {
+                        fallbackBalance
+                    } else {
+                        BetfuryWebViewManager.cachedBalances[platform.defaultCurrency] ?: 0.0
+                    }
                     isDetectedSuccess = true
                     detectedSession = clean
+                    if (platform == CasinoPlatform.BETFURY) {
+                        BetfuryWebViewManager.isPageLoaded = true
+                        if (bal > 0.0) {
+                            BetfuryWebViewManager.cachedBalances[platform.defaultCurrency] = bal
+                        }
+                    }
                     verificationStatusMessage = "✅ Berhasil Terhubung! Saldo: $bal ${platform.defaultCurrency}"
                     onSessionCaptured(clean)
                     delay(1200)
@@ -559,8 +572,15 @@ fun CasinoWebLoginDialog(
                             AndroidView(
                                 modifier = Modifier.fillMaxSize(),
                                 factory = { ctx ->
-                                    WebView(ctx).apply {
-                                        webViewRef = this
+                                    val wv = if (platform == CasinoPlatform.BETFURY) {
+                                        val existing = BetfuryWebViewManager.getOrCreateWebView(ctx)
+                                        (existing.parent as? ViewGroup)?.removeView(existing)
+                                        existing
+                                    } else {
+                                        WebView(ctx)
+                                    }
+                                    webViewRef = wv
+                                    wv.apply {
                                         layoutParams = ViewGroup.LayoutParams(
                                             ViewGroup.LayoutParams.MATCH_PARENT,
                                             ViewGroup.LayoutParams.MATCH_PARENT
@@ -630,11 +650,19 @@ fun CasinoWebLoginDialog(
                                                 super.onPageStarted(view, url, favicon)
                                                 hasLoadError = false
                                                 url?.let { currentUrlDisplay = it }
+                                                if (platform == CasinoPlatform.BETFURY) {
+                                                    view?.evaluateJavascript(BetfuryWebViewManager.INJECTION_SCRIPT, null)
+                                                }
                                             }
 
                                             override fun onPageFinished(view: WebView?, url: String?) {
                                                 super.onPageFinished(view, url)
                                                 url?.let { currentUrlDisplay = it }
+                                                if (platform == CasinoPlatform.BETFURY) {
+                                                    view?.evaluateJavascript(BetfuryWebViewManager.INJECTION_SCRIPT) {
+                                                        view.evaluateJavascript("window.__dicebotScanBalances();", null)
+                                                    }
+                                                }
 
                                                 // Inject hook to catch successful AJAX login response
                                                 val xhrHookScript = """
@@ -1163,8 +1191,13 @@ fun CasinoWebLoginDialog(
 
     DisposableEffect(Unit) {
         onDispose {
-            webViewRef?.destroy()
-            webViewRef = null
+            if (platform == CasinoPlatform.BETFURY) {
+                // Jangan destroy WebView Betfury agar persistent In-App Bridge tetap aktif di background
+                (webViewRef?.parent as? ViewGroup)?.removeView(webViewRef)
+            } else {
+                webViewRef?.destroy()
+                webViewRef = null
+            }
         }
     }
 }
