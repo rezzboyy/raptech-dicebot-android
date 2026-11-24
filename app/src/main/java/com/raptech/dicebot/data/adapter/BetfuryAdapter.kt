@@ -507,6 +507,12 @@ class BetfuryAdapter(
     }
 
     override suspend fun fetchAvailableBalances(): Result<List<CoinBalance>> = withContext(Dispatchers.IO) {
+        // Inisialisasi seluruh koin resmi yang didukung Betfury agar selalu muncul di daftar selector
+        CasinoPlatform.BETFURY.supportedCoins.forEach { coin ->
+            if (!cachedBalances.containsKey(coin)) {
+                cachedBalances[coin] = BetfuryWebViewManager.cachedBalances[coin] ?: 0.0
+            }
+        }
         // Sinkronkan seluruh saldo dari BetfuryWebViewManager
         BetfuryWebViewManager.cachedBalances.forEach { (coin, bal) ->
             if (bal > 0.0 || !cachedBalances.containsKey(coin)) {
@@ -515,7 +521,7 @@ class BetfuryAdapter(
         }
 
         try {
-            if (!BetfuryWebViewManager.isReady()) {
+            if (!BetfuryWebViewManager.isReady() && !isConnected) {
                 ensureConnected()
             }
             val list = cachedBalances.map { (coin, bal) ->
@@ -527,18 +533,14 @@ class BetfuryAdapter(
             )
             Result.success(list)
         } catch (e: Exception) {
-            if (cachedBalances.isNotEmpty()) {
-                val list = cachedBalances.map { (coin, bal) ->
-                    CoinBalance(currency = coin, balance = bal, isAvailable = true)
-                }.sortedWith(
-                    compareByDescending<CoinBalance> { it.balance > 0 }
-                        .thenByDescending { it.balance }
-                        .thenBy { it.currency }
-                )
-                Result.success(list)
-            } else {
-                Result.failure(e)
-            }
+            val list = cachedBalances.map { (coin, bal) ->
+                CoinBalance(currency = coin, balance = bal, isAvailable = true)
+            }.sortedWith(
+                compareByDescending<CoinBalance> { it.balance > 0 }
+                    .thenByDescending { it.balance }
+                    .thenBy { it.currency }
+            )
+            Result.success(list)
         }
     }
 
@@ -550,19 +552,65 @@ class BetfuryAdapter(
     ): Result<BetResponse> = withContext(Dispatchers.IO) {
         val cur = currency.uppercase(Locale.ROOT)
 
-        // 1. Prioritas Utama: Eksekusi In-WebView Bridge (100% Berjalan di Origin Browser, Imun WAF Cloudflare)
-        if (BetfuryWebViewManager.isReady()) {
+        // 1. Prioritas Utama: Direct OkHttp WebSocket jika sudah terkoneksi (Ultra-Fast < 100ms)
+        if (isConnected && webSocket != null) {
+            try {
+                if (cur != activeCurrency) {
+                    changeCurrency(cur)
+                }
+                if (!joinedDiceRoom) {
+                    joinDiceRoom()
+                }
+
+                val chance = target.coerceIn(0.01, 98.0)
+                val prediction = if (isHigh) (99.0 - chance).toInt() else chance.toInt()
+                val formattedAmount = String.format(Locale.US, "%.8f", amount)
+
+                val payload = JSONObject().apply {
+                    put("amount", formattedAmount)
+                    put("frontID", System.currentTimeMillis())
+                    put("isBonusBet", false)
+                    put("isFast", true) // Fast Bet Mode!
+                    put("is_under", !isHigh)
+                    put("prediction", prediction)
+                    put("strategyName", "")
+                    put("version", "main")
+                }
+
+                val betResultJson = emitWithAck("games.dice.bet", payload, 5000L)
+                val array = JSONArray(betResultJson)
+                if (array.length() > 0) {
+                    val root = array.getJSONObject(0)
+                    if (root.has("error") && !root.isNull("error")) {
+                        val err = root.optString("error")
+                        val code = root.optInt("code", 0)
+                        if (code == 7305 || err.contains("Join the room first", ignoreCase = true)) {
+                            joinedDiceRoom = false
+                            joinDiceRoom()
+                            val retryJson = emitWithAck("games.dice.bet", payload, 5000L)
+                            val retryArr = JSONArray(retryJson)
+                            return@withContext parseBetPayload(retryArr.getJSONObject(0), cur, amount)
+                        }
+                        throw IOException("Betfury Bet Error: $err (code=$code)")
+                    }
+                    return@withContext parseBetPayload(root, cur, amount)
+                }
+            } catch (e: Exception) {
+                logW("Direct OkHttp socket roll error (${e.message}), mencoba bridge/reconnect...")
+            }
+        }
+
+        // 2. Jika OkHttp belum connect, coba In-WebView Bridge (Fast 3s timeout)
+        if (BetfuryWebViewManager.isReady() && BetfuryWebViewManager.isWebSocketCaptured) {
             val bridgeRes = BetfuryWebViewManager.placeBet(amount, target, isHigh, cur)
             if (bridgeRes.isSuccess) {
                 val data = bridgeRes.getOrThrow()
                 cachedBalances[cur] = data.newBalance
                 return@withContext bridgeRes
-            } else {
-                logW("In-WebView Bridge bet gagal (${bridgeRes.exceptionOrNull()?.message}), mencoba fallback ke background socket...")
             }
         }
 
-        // 2. Fallback: Background OkHttp Socket.IO Client
+        // 3. Fallback: Hubungkan OkHttp Socket dan kirim taruhan
         try {
             ensureConnected()
             if (cur != activeCurrency) {
@@ -581,7 +629,7 @@ class BetfuryAdapter(
                 put("amount", formattedAmount)
                 put("frontID", System.currentTimeMillis())
                 put("isBonusBet", false)
-                put("isFast", false)
+                put("isFast", true) // Fast Bet Mode!
                 put("is_under", !isHigh)
                 put("prediction", prediction)
                 put("strategyName", "")
@@ -590,12 +638,11 @@ class BetfuryAdapter(
 
             var betResultJson: String
             try {
-                betResultJson = emitWithAck("games.dice.bet", payload, 8000L)
+                betResultJson = emitWithAck("games.dice.bet", payload, 5000L)
             } catch (e: Exception) {
-                // Auto-recovery: If room disconnected or 7305, rejoin and retry once
                 joinedDiceRoom = false
                 joinDiceRoom()
-                betResultJson = emitWithAck("games.dice.bet", payload, 8000L)
+                betResultJson = emitWithAck("games.dice.bet", payload, 5000L)
             }
 
             val array = JSONArray(betResultJson)
@@ -607,11 +654,10 @@ class BetfuryAdapter(
             if (root.has("error") && !root.isNull("error")) {
                 val err = root.optString("error")
                 val code = root.optInt("code", 0)
-                // If code is 7305 or 0x1c89, auto-join room and retry once
                 if (code == 7305 || err.contains("Join the room first", ignoreCase = true)) {
                     joinedDiceRoom = false
                     joinDiceRoom()
-                    val retryJson = emitWithAck("games.dice.bet", payload, 8000L)
+                    val retryJson = emitWithAck("games.dice.bet", payload, 5000L)
                     val retryArr = JSONArray(retryJson)
                     val retryRoot = retryArr.getJSONObject(0)
                     return@withContext parseBetPayload(retryRoot, cur, amount)
@@ -627,14 +673,27 @@ class BetfuryAdapter(
 
     private fun parseBetPayload(root: JSONObject, cur: String, wageredAmount: Double): Result<BetResponse> {
         val resp = root.optJSONObject("response") ?: root
-        val winAmountStr = resp.optString("winAmount", "0")
-        val winAmount = winAmountStr.toDoubleOrNull() ?: 0.0
-        val profitStr = resp.optString("profit", "0")
-        val profit = profitStr.toDoubleOrNull() ?: (winAmount - wageredAmount)
-        val rollResult = resp.optDouble("roll_number", resp.optDouble("roll", 50.0))
+        val winAmountStr = resp.optString("winAmount", "")
+        val winAmount = if (winAmountStr.isNotBlank()) {
+            winAmountStr.toDoubleOrNull() ?: 0.0
+        } else {
+            resp.optDouble("winAmount", 0.0)
+        }
         val isWin = winAmount > 0.0
 
-        // Update cached balance if user object provided
+        // Betfury official calculation:
+        // When WIN: profit = winAmount - wageredAmount (positive net profit)
+        // When LOSE: profit = -wageredAmount (negative loss)
+        val profit = if (isWin) {
+            val p = resp.optDouble("profit", Double.NaN)
+            if (!p.isNaN() && p > 0.0) p else (winAmount - wageredAmount)
+        } else {
+            -wageredAmount
+        }
+
+        val rollResult = resp.optDouble("roll_number", resp.optDouble("roll", if (isWin) 75.0 else 25.0))
+
+        // Update cached balance
         val user = resp.optJSONObject("user")
         var currentBal = cachedBalances[cur] ?: 0.0
         if (user != null) {

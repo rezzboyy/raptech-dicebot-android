@@ -31,13 +31,17 @@ fun MetricsDashboard(
     onToggleCollapse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Time format: Days:Hours:Minutes:Seconds (0:0:0:3)
+    // Standard Time format: HH:mm:ss atau D:HH:mm:ss
     val totalSeconds = state.sessionElapsedTimeMs / 1000L
     val days = totalSeconds / 86400L
     val hours = (totalSeconds % 86400L) / 3600L
     val minutes = (totalSeconds % 3600L) / 60L
     val seconds = totalSeconds % 60L
-    val timeFormatted = "$days:$hours:$minutes:$seconds"
+    val timeFormatted = if (days > 0) {
+        String.format(Locale.US, "%dd %02d:%02d:%02d", days, hours, minutes, seconds)
+    } else {
+        String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+    }
 
     // Volume Multiplier (misal (0.01x) 0.08300000)
     val volMultiplier = if (state.initialBalance > 0.0) state.totalVolume / state.initialBalance else 0.0

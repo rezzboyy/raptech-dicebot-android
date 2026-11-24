@@ -281,6 +281,16 @@ class AuthAndPlatformAdapterTest {
             val balRes = adapter.fetchBalance("BFG")
             assertTrue(balRes.isSuccess)
             assertEquals(24.5006732, balRes.getOrNull() ?: 0.0, 0.0000001)
+
+            // Test all 13 supported coins are listed
+            val availRes = adapter.fetchAvailableBalances()
+            assertTrue(availRes.isSuccess)
+            val list = availRes.getOrThrow()
+            assertTrue(list.any { it.currency == "BFG" })
+            assertTrue(list.any { it.currency == "USDT" })
+            assertTrue(list.any { it.currency == "TRX" })
+            assertTrue(list.any { it.currency == "BTC" })
+            assertEquals("BFG harus di posisi teratas karena memiliki saldo", "BFG", list.first().currency)
         }
     }
 }

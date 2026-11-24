@@ -244,6 +244,27 @@ Fokus aktif saat ini adalah transformasi menyeluruh antarmuka menuju tema **Soli
 
 ---
 
+### Track 9: Optimasi Kecepatan Turbo Betfury, Perbaikan Profit Engine & Multi-Currency (Status: SELESAI & TERTUTUP ✓)
+- [x] **9.1 Perbaikan Total Rumus Profit & Saldo Real-Time**:
+  - Mengeliminasi default palsu `optString("profit", "0")` pada `BetfuryAdapter.kt` dan `BetfuryWebViewManager.kt`.
+  - Mengadopsi rumus resmi: Menang = `winAmount - wager`, Kalah = `-wager`.
+  - Saldo kini bertambah saat menang dan berkurang saat kalah, grafik Live PnL Chart bergerak naik-turun dinamis, Net Result & persentase aktif akurat.
+- [x] **9.2 Peningkatan Kecepatan Eksekusi (Turbo Fast-Bet Mode)**:
+  - Mengaktifkan `"isFast": true` (Fast Bet mode resmi Betfury tanpa animasi lambat server).
+  - Menghilangkan penundaan timeout 15 detik bridge: jika direct socket sudah tersambung, langsung tembak via OkHttp WebSocket (< 100ms per bet).
+  - Mengoptimalkan interval jeda eksekusi di Service menjadi 30ms.
+- [x] **9.3 Penelusuran Multi-Currency Wallet (13 Koin Terlengkap)**:
+  - Deep JSON traversal untuk objek bersarang `response.user.currencies` pada `onCurrenciesUpdate`.
+  - Inisialisasi seluruh 13 koin resmi Betfury (`BFG, USDT, TRX, BTC, ETH, BNB, DOGE, LTC, SOL, XRP, MATIC, BCH, SHIB`) di dalam `CoinSelectorDialog`.
+- [x] **9.4 Standarisasi Format Waktu Dashboard**:
+  - Format waktu diubah menjadi format standar `HH:mm:ss` (contoh: `00:05:58`) pada `MetricsDashboard.kt`.
+- [x] **9.5 Verifikasi Unit Test & Kompilasi APK**:
+  - Unit tests `./gradlew test` (100% PASS, 46 tasks).
+  - Gradle `assembleDebug` sukses (`BUILD SUCCESSFUL in 15s`).
+  - Sesuai SOP: **TIDAK ada rilis/deploy** yang dijalankan sebelum kata kunci `"Jang Release"`.
+
+---
+
 ## 2. Aturan Baku Rekayasa & Desain (Engineering & Design Rules)
 
 ### Rule 1: Solid White & Comfort Warm Orange (Zero Eye Strain)

@@ -327,7 +327,7 @@ class DicebotForegroundService : Service() {
                     )
                 }
 
-                delay(100) // Kecepatan interval taruhan
+                delay(30) // Kecepatan interval taruhan (Ultra-fast responsive)
             }
         }
     }

@@ -167,7 +167,7 @@ object BetfuryWebViewManager {
                             amount: amountStr,
                             frontID: Date.now(),
                             isBonusBet: false,
-                            isFast: false,
+                            isFast: true,
                             is_under: isUnder,
                             prediction: prediction,
                             strategyName: "",
@@ -255,12 +255,25 @@ object BetfuryWebViewManager {
                 val root = JSONObject(cleanJson)
                 val resp = root.optJSONObject("response") ?: root
 
-                val winAmountStr = resp.optString("winAmount", "0")
-                val winAmount = winAmountStr.toDoubleOrNull() ?: 0.0
-                val profitStr = resp.optString("profit", "0")
-                val profit = profitStr.toDoubleOrNull() ?: (winAmount - pendingBetAmount)
-                val rollResult = resp.optDouble("roll_number", resp.optDouble("roll", 50.0))
+                val winAmountStr = resp.optString("winAmount", "")
+                val winAmount = if (winAmountStr.isNotBlank()) {
+                    winAmountStr.toDoubleOrNull() ?: 0.0
+                } else {
+                    resp.optDouble("winAmount", 0.0)
+                }
                 val isWin = winAmount > 0.0
+
+                // Betfury official calculation:
+                // When WIN: profit = winAmount - wageredAmount
+                // When LOSE: profit = -wageredAmount
+                val profit = if (isWin) {
+                    val p = resp.optDouble("profit", Double.NaN)
+                    if (!p.isNaN() && p > 0.0) p else (winAmount - pendingBetAmount)
+                } else {
+                    -pendingBetAmount
+                }
+
+                val rollResult = resp.optDouble("roll_number", resp.optDouble("roll", if (isWin) 75.0 else 25.0))
 
                 // Update cached balance
                 val user = resp.optJSONObject("user")
@@ -307,11 +320,17 @@ object BetfuryWebViewManager {
                 val firstBrace = raw.indexOf('{')
                 val lastBrace = raw.lastIndexOf('}')
                 if (firstBrace != -1 && lastBrace > firstBrace) {
-                    val json = JSONObject(raw.substring(firstBrace, lastBrace + 1))
-                    val curObj = json.optJSONObject("currencies") ?: json
+                    val root = JSONObject(raw.substring(firstBrace, lastBrace + 1))
+                    val curObj = root.optJSONObject("currencies")
+                        ?: root.optJSONObject("response")?.optJSONObject("user")?.optJSONObject("currencies")
+                        ?: root.optJSONObject("response")?.optJSONObject("currencies")
+                        ?: root.optJSONObject("user")?.optJSONObject("currencies")
+                        ?: root
+
                     val keys = curObj.keys()
                     while (keys.hasNext()) {
                         val k = keys.next()
+                        if (k.equals("response", ignoreCase = true) || k.equals("user", ignoreCase = true)) continue
                         val v = curObj.opt(k)
                         val bal = when (v) {
                             is JSONObject -> v.optDouble("balance", 0.0)
@@ -319,11 +338,9 @@ object BetfuryWebViewManager {
                             is String -> v.toDoubleOrNull() ?: 0.0
                             else -> 0.0
                         }
-                        if (bal > 0.0 || !cachedBalances.containsKey(k.uppercase(Locale.ROOT))) {
-                            cachedBalances[k.uppercase(Locale.ROOT)] = bal
-                        }
+                        cachedBalances[k.uppercase(Locale.ROOT)] = bal
                     }
-                    logD("Saldo diperbarui dari Nuxt/Store: ${cachedBalances.size} koin terdeteksi.")
+                    logD("Saldo diperbarui dari Nuxt/Store: ${cachedBalances.size} koin terdeteksi: ${cachedBalances.keys().toList()}")
                 }
             } catch (_: Exception) {}
         }
@@ -422,7 +439,7 @@ object BetfuryWebViewManager {
         }
 
         try {
-            val response = withTimeout(15000L) {
+            val response = withTimeout(3500L) {
                 deferred.await()
             }
             Result.success(response)
